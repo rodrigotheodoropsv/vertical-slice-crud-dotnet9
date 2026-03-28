@@ -10,11 +10,10 @@ import OrderDetails from './components/OrderDetails';
 import OrderNote from './components/OrderNote';
 import EmailModal from './components/EmailModal';
 
-import { mapRowsToProducts, generateOrderNumber, formatDateBR } from './utils/productMapper';
+import { generateOrderNumber, formatDateBR } from './utils/productMapper';
 import type {
-  ColumnMapping,
+  CatalogState,
   SpreadsheetRow,
-  Product,
   OrderItem,
   Order,
   ClientInfo,
@@ -24,6 +23,18 @@ import type {
 import { ShoppingCart, FileText, Mail, ChevronDown, ChevronUp, Package } from 'lucide-react';
 
 const SMTP_STORAGE_KEY = 'pvs_smtp_config';
+const CATALOG_SESSION_KEY = 'pvs_catalog';
+
+function saveCatalog(catalog: CatalogState) {
+  try { sessionStorage.setItem(CATALOG_SESSION_KEY, JSON.stringify(catalog)); } catch { /* quota */ }
+}
+
+function loadCatalog(): CatalogState | null {
+  try {
+    const raw = sessionStorage.getItem(CATALOG_SESSION_KEY);
+    return raw ? (JSON.parse(raw) as CatalogState) : null;
+  } catch { return null; }
+}
 
 const DEFAULT_CLIENT: ClientInfo = {
   razaoSocial: '',
@@ -51,7 +62,7 @@ function loadSmtpConfig(): SmtpConfig {
 }
 
 export default function App() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [catalog, setCatalog] = useState<CatalogState | null>(loadCatalog);
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
   const [client, setClient] = useState<ClientInfo>(DEFAULT_CLIENT);
   const [vendedor, setVendedor] = useState('');
@@ -70,43 +81,59 @@ export default function App() {
     localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify(smtpConfig));
   }, [smtpConfig]);
 
-  function handleFileParsed(_headers: string[], rows: SpreadsheetRow[], mapping: ColumnMapping) {
-    const mapped = mapRowsToProducts(rows, mapping);
-    setProducts(mapped);
+  // Persist catalog across page reloads (session)
+  useEffect(() => {
+    if (catalog) saveCatalog(catalog);
+    else sessionStorage.removeItem(CATALOG_SESSION_KEY);
+  }, [catalog]);
+
+  function handleFileParsed(newCatalog: CatalogState) {
+    setCatalog(newCatalog);
     setCartItems([]);
   }
 
-  function handleAddItem(product: Product, quantity: number) {
+  function handleAddItem(row: SpreadsheetRow, quantity: number) {
+    if (!catalog) return;
+    const { idCol, nomeCol, precoCol, estoqueCol } = catalog.fieldMapping;
+    const id = String(row[idCol] ?? '');
+    const stock = Number(row[estoqueCol] ?? 0);
+    const price = Number(row[precoCol] ?? 0);
+
     setCartItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
+      const existing = prev.find((i) => String(i.row[idCol] ?? '') === id);
       if (existing) {
         const newQty = existing.quantidade + quantity;
-        if (newQty > product.estoque) {
-          toast.error(`Quantidade máxima em estoque: ${product.estoque}`);
+        if (newQty > stock) {
+          toast.error(`Quantidade máxima em estoque: ${stock}`);
           return prev;
         }
         return prev.map((i) =>
-          i.product.id === product.id
-            ? { ...i, quantidade: newQty, subtotal: newQty * product.precoUnitario }
+          String(i.row[idCol] ?? '') === id
+            ? { ...i, quantidade: newQty, subtotal: newQty * price }
             : i,
         );
       }
-      toast.success(`${product.nome} adicionado ao pedido`);
-      return [...prev, { product, quantidade: quantity, subtotal: quantity * product.precoUnitario }];
+      toast.success(`${String(row[nomeCol] ?? '')} adicionado ao pedido`);
+      return [...prev, { row, quantidade: quantity, subtotal: quantity * price }];
     });
   }
 
-  function handleRemoveItem(productId: string) {
-    setCartItems((prev) => prev.filter((i) => i.product.id !== productId));
+  function handleRemoveItem(rowId: string) {
+    if (!catalog) return;
+    const { idCol } = catalog.fieldMapping;
+    setCartItems((prev) => prev.filter((i) => String(i.row[idCol] ?? '') !== rowId));
   }
 
-  function handleChangeQty(productId: string, qty: number) {
-    if (qty <= 0) return;
+  function handleChangeQty(rowId: string, qty: number) {
+    if (!catalog || qty <= 0) return;
+    const { idCol, estoqueCol, precoCol } = catalog.fieldMapping;
     setCartItems((prev) =>
       prev.map((i) => {
-        if (i.product.id !== productId) return i;
-        const safeQty = Math.min(qty, i.product.estoque);
-        return { ...i, quantidade: safeQty, subtotal: safeQty * i.product.precoUnitario };
+        if (String(i.row[idCol] ?? '') !== rowId) return i;
+        const stock = Number(i.row[estoqueCol] ?? 0);
+        const price = Number(i.row[precoCol] ?? 0);
+        const safeQty = Math.min(qty, stock);
+        return { ...i, quantidade: safeQty, subtotal: safeQty * price };
       }),
     );
   }
@@ -144,6 +171,8 @@ export default function App() {
       condicaoPagamento,
       prazoEntrega,
       vendedor,
+      fieldMapping: catalog!.fieldMapping,
+      activeColumns: catalog!.activeColumns,
     };
   }
 
@@ -162,7 +191,7 @@ export default function App() {
   }
 
   const total = cartItems.reduce((s, i) => s + i.subtotal, 0);
-  const hasProducts = products.length > 0;
+  const hasProducts = catalog !== null;
   const hasItems = cartItems.length > 0;
 
   return (
@@ -212,13 +241,13 @@ export default function App() {
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-white text-sm font-bold">2</span>
               <h2 className="text-base font-bold text-gray-800 flex-1">Selecionar Produtos</h2>
-              <span className="text-xs text-gray-400">{products.length} no catálogo</span>
+              <span className="text-xs text-gray-400">{catalog?.rows.length ?? 0} no catálogo</span>
               {catalogOpen ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
             </button>
 
-            {catalogOpen && (
+            {catalogOpen && catalog && (
               <div className="mt-4">
-                <ProductCatalog products={products} onAddItem={handleAddItem} />
+                <ProductCatalog catalog={catalog} onAddItem={handleAddItem} />
               </div>
             )}
           </section>
@@ -238,6 +267,7 @@ export default function App() {
             </div>
             <OrderCart
               items={cartItems}
+              fieldMapping={catalog!.fieldMapping}
               onRemove={handleRemoveItem}
               onChangeQty={handleChangeQty}
             />

@@ -1,39 +1,32 @@
-// ─── Product & Catalog ────────────────────────────────────────────────────────
+// ─── Spreadsheet ─────────────────────────────────────────────────────────────
 
 /** Raw row from the uploaded spreadsheet. Keys are column headers. */
 export type SpreadsheetRow = Record<string, string | number>;
 
-/** Resolved product after column mapping. */
-export interface Product {
-  id: string;
-  nome: string;
-  categoria: string;
-  unidade: string;
-  precoUnitario: number;
-  estoque: number;
-  /** All other raw columns kept for display */
-  extra: Record<string, string | number>;
+/**
+ * Maps which spreadsheet column corresponds to each required order field.
+ * Values are the actual header names from the uploaded file.
+ */
+export interface FieldMapping {
+  idCol: string;       // column used as unique product key
+  nomeCol: string;     // column used as product name in cart / order
+  precoCol: string;    // column used for unit price (subtotal calculation)
+  estoqueCol: string;  // column used for stock validation
 }
 
-// ─── Column mapping ────────────────────────────────────────────────────────────
-
-/**
- * Maps which spreadsheet column corresponds to each required product field.
- * All values are header names from the uploaded file.
- */
-export interface ColumnMapping {
-  id: string;
-  nome: string;
-  categoria: string;
-  unidade: string;
-  precoUnitario: string;
-  estoque: string;
+/** Full catalog state — persisted in sessionStorage between page reloads. */
+export interface CatalogState {
+  fileName: string;
+  allHeaders: string[];     // every header from the raw file
+  activeColumns: string[];  // vendor-selected subset to display
+  rows: SpreadsheetRow[];
+  fieldMapping: FieldMapping;
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
 
 export interface OrderItem {
-  product: Product;
+  row: SpreadsheetRow;
   quantidade: number;
   subtotal: number;
 }
@@ -49,6 +42,8 @@ export interface Order {
   condicaoPagamento: string;
   prazoEntrega: string;
   vendedor: string;
+  fieldMapping: FieldMapping;
+  activeColumns: string[];
 }
 
 export interface ClientInfo {

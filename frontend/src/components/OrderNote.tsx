@@ -96,27 +96,31 @@ export default function OrderNote({ order, onClose }: Props) {
               <tr>
                 <th className="px-3 py-2 border border-gray-200 text-left">Cód.</th>
                 <th className="px-3 py-2 border border-gray-200 text-left">Produto</th>
-                <th className="px-3 py-2 border border-gray-200 text-center">Un.</th>
                 <th className="px-3 py-2 border border-gray-200 text-center">Qtd</th>
                 <th className="px-3 py-2 border border-gray-200 text-right">Vlr Unit.</th>
                 <th className="px-3 py-2 border border-gray-200 text-right">Subtotal</th>
               </tr>
             </thead>
             <tbody>
-              {order.itens.map((item, i) => (
-                <tr key={item.product.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-3 py-2 border border-gray-200 font-mono text-xs text-gray-500">{item.product.id}</td>
-                  <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">{item.product.nome}</td>
-                  <td className="px-3 py-2 border border-gray-200 text-center text-gray-500">{item.product.unidade}</td>
-                  <td className="px-3 py-2 border border-gray-200 text-center">{item.quantidade}</td>
-                  <td className="px-3 py-2 border border-gray-200 text-right text-gray-600">{formatBRL(item.product.precoUnitario)}</td>
-                  <td className="px-3 py-2 border border-gray-200 text-right font-semibold text-gray-800">{formatBRL(item.subtotal)}</td>
-                </tr>
-              ))}
+              {order.itens.map((item, i) => {
+                const { idCol, nomeCol, precoCol } = order.fieldMapping;
+                const id   = String(item.row[idCol]   ?? '');
+                const nome = String(item.row[nomeCol] ?? '');
+                const price = Number(item.row[precoCol] ?? 0);
+                return (
+                  <tr key={id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-3 py-2 border border-gray-200 font-mono text-xs text-gray-500">{id}</td>
+                    <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">{nome}</td>
+                    <td className="px-3 py-2 border border-gray-200 text-center">{item.quantidade}</td>
+                    <td className="px-3 py-2 border border-gray-200 text-right text-gray-600">{formatBRL(price)}</td>
+                    <td className="px-3 py-2 border border-gray-200 text-right font-semibold text-gray-800">{formatBRL(item.subtotal)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-blue-50 font-bold">
-                <td colSpan={5} className="px-3 py-3 border border-gray-200 text-right text-gray-700">TOTAL DO PEDIDO</td>
+                <td colSpan={4} className="px-3 py-3 border border-gray-200 text-right text-gray-700">TOTAL DO PEDIDO</td>
                 <td className="px-3 py-3 border border-gray-200 text-right text-blue-700 text-lg">{formatBRL(order.total)}</td>
               </tr>
             </tfoot>

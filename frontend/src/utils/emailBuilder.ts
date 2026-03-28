@@ -3,11 +3,12 @@ import { formatBRL } from './productMapper';
 
 /** Build the full plain-text body for the order email. */
 export function buildEmailBody(order: Order): string {
+  const { idCol, nomeCol, precoCol } = order.fieldMapping;
   const itemLines = order.itens
     .map(
       (item, i) =>
-        `  ${i + 1}. ${item.product.nome} (${item.product.id}) — ` +
-        `${item.quantidade} ${item.product.unidade} × ${formatBRL(item.product.precoUnitario)} = ${formatBRL(item.subtotal)}`,
+        `  ${i + 1}. ${String(item.row[nomeCol] ?? '')} (${String(item.row[idCol] ?? '')}) — ` +
+        `${item.quantidade} × ${formatBRL(Number(item.row[precoCol] ?? 0))} = ${formatBRL(item.subtotal)}`,
     )
     .join('\n');
 
@@ -49,15 +50,15 @@ ${order.vendedor}
 
 /** Build an HTML email body for richer clients. */
 export function buildEmailHtml(order: Order): string {
+  const { idCol, nomeCol, precoCol } = order.fieldMapping;
   const rows = order.itens
     .map(
       (item, i) => `
     <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#ffffff'}">
-      <td style="padding:8px 12px;border:1px solid #e5e7eb">${item.product.id}</td>
-      <td style="padding:8px 12px;border:1px solid #e5e7eb">${item.product.nome}</td>
+      <td style="padding:8px 12px;border:1px solid #e5e7eb">${String(item.row[idCol] ?? '')}</td>
+      <td style="padding:8px 12px;border:1px solid #e5e7eb">${String(item.row[nomeCol] ?? '')}</td>
       <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center">${item.quantidade}</td>
-      <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center">${item.product.unidade}</td>
-      <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right">${formatBRL(item.product.precoUnitario)}</td>
+      <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right">${formatBRL(Number(item.row[precoCol] ?? 0))}</td>
       <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:600">${formatBRL(item.subtotal)}</td>
     </tr>`,
     )
@@ -90,7 +91,6 @@ export function buildEmailHtml(order: Order): string {
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:left">Cód.</th>
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:left">Produto</th>
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:center">Qtd</th>
-          <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:center">Un</th>
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:right">Vlr Unit.</th>
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:right">Subtotal</th>
         </tr>

@@ -1,28 +1,4 @@
-import type { ColumnMapping, Product, SpreadsheetRow } from '../types';
-
-/** Convert raw spreadsheet rows to typed Product objects using the column mapping. */
-export function mapRowsToProducts(rows: SpreadsheetRow[], mapping: ColumnMapping): Product[] {
-  return rows.map((row, idx) => {
-    const extra: Record<string, string | number> = {};
-    const mappedCols = new Set(Object.values(mapping));
-
-    for (const key of Object.keys(row)) {
-      if (!mappedCols.has(key)) {
-        extra[key] = row[key];
-      }
-    }
-
-    return {
-      id: String(row[mapping.id] ?? idx + 1),
-      nome: String(row[mapping.nome] ?? ''),
-      categoria: String(row[mapping.categoria] ?? ''),
-      unidade: String(row[mapping.unidade] ?? 'UN'),
-      precoUnitario: Number(row[mapping.precoUnitario] ?? 0),
-      estoque: Number(row[mapping.estoque] ?? 0),
-      extra,
-    };
-  });
-}
+import type { FieldMapping } from '../types';
 
 /** Format a number as Brazilian currency. */
 export function formatBRL(value: number): string {
@@ -45,18 +21,21 @@ export function generateOrderNumber(): string {
   return `PV${yy}${mm}${dd}-${rnd}`;
 }
 
-/** Try to automatically guess column mapping from headers. */
-export function guessColumnMapping(headers: string[]): Partial<ColumnMapping> {
+/** Get a numeric value from a row for a given column key. */
+export function getNumber(row: Record<string, string | number>, col: string): number {
+  return Number(row[col] ?? 0);
+}
+
+/** Try to automatically guess field mapping from file headers. */
+export function guessFieldMapping(headers: string[]): FieldMapping {
   const lower = headers.map((h) => h.toLowerCase());
   const find = (...terms: string[]) =>
-    headers[lower.findIndex((h) => terms.some((t) => h.includes(t)))] ?? '';
+    headers[lower.findIndex((h) => terms.some((t) => h.includes(t)))] ?? headers[0] ?? '';
 
   return {
-    id: find('id', 'código', 'codigo', 'cod'),
-    nome: find('nome', 'produto', 'descricao', 'descrição', 'name'),
-    categoria: find('categoria', 'grupo', 'tipo', 'family', 'família'),
-    unidade: find('unidade', 'un', 'unit', 'medida'),
-    precoUnitario: find('preço', 'preco', 'price', 'valor', 'value', 'custo'),
-    estoque: find('estoque', 'saldo', 'qty', 'quantidade disponivel', 'disponivel'),
+    idCol:      find('id', 'código', 'codigo', 'cod', 'sku', 'ref'),
+    nomeCol:    find('nome', 'produto', 'descricao', 'descrição', 'description', 'name'),
+    precoCol:   find('preço', 'preco', 'price', 'valor', 'value', 'custo', 'vlr'),
+    estoqueCol: find('estoque', 'saldo', 'qty', 'quantidade disponivel', 'disponivel', 'stock'),
   };
 }
