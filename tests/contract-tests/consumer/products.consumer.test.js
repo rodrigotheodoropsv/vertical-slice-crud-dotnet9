@@ -201,6 +201,20 @@ describe('Products API — Consumer Contract Tests', () => {
           body: { status: integer(404), title: like('Not Found') },
         },
       })
+      .addInteraction({
+        states: [{ description: 'no products exist' }],
+        uponReceiving: 'a request to update a product with invalid data',
+        withRequest: {
+          method: 'PUT', path: `/api/products/${MISSING_ID}`,
+          headers: { 'Content-Type': 'application/json' },
+          body: { name: '', description: 'Desc', price: 1.0, stock: 1 },
+        },
+        willRespondWith: {
+          status: 400,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: ERROR_400,
+        },
+      })
       // DELETE /api/products/:id
       .addInteraction({
         states: [{ description: 'a product exists', params: { id: DELETE_ID } }],
@@ -285,6 +299,13 @@ describe('Products API — Consumer Contract Tests', () => {
           .withJson({ name: 'Name', description: 'Desc', price: 1.0, stock: 1 })
           .toss();
         expect(update404.statusCode).toBe(404);
+
+        const update400 = await pactum.spec()
+          .put(`${base}/api/products/${MISSING_ID}`)
+          .withJson({ name: '', description: 'Desc', price: 1.0, stock: 1 })
+          .toss();
+        expect(update400.statusCode).toBe(400);
+        expect(update400.body.status).toBe(400);
 
         // ── DELETE /api/products/:id ────────────────────────────────────────
 
