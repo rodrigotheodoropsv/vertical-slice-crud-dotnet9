@@ -49,17 +49,17 @@ Campos do catálogo de exemplo:
 
 Você pode colocar o logo da sua empresa em:
 
-- `frontend/public/branding/company-logo.png`
+- `public/branding/company-logo.png`
 
 Esse arquivo é usado automaticamente em:
 
 - Header da aplicação
-- Nota do pedido (visualização e impressão/PDF)
+- Nota do pedido (impressão/PDF)
 - Template HTML de e-mail
 
 Se quiser alterar nome da empresa ou caminho do logo padrão, ajuste:
 
-- `frontend/src/utils/branding.ts`
+- `src/utils/branding.ts`
 
 ## ✉️ Configuração de envio de e-mail
 
@@ -78,9 +78,9 @@ Como alternativa, clique em **"Abrir no cliente de e-mail"** para compor a mensa
 |---|---|
 | React 19 + TypeScript | Interface |
 | Vite 8 | Build / Dev server |
-| Tailwind CSS 4 | Estilos |
+| Material UI (MUI) 7 + Emotion | Componentes de interface e tema |
 | ExcelJS | Leitura de `.xlsx` |
 | Papa Parse | Leitura de `.csv` |
 | @emailjs/browser | Envio de e-mail |
-| lucide-react | Ícones |
+| @mui/icons-material | Ícones |
 | react-hot-toast | Notificações |
