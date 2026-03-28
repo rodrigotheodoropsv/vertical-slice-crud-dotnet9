@@ -4,6 +4,7 @@
   "description": "PactumJS consumer contract tests and provider verification for VerticalSliceCrud API",
   "private": true,
   "scripts": {
+    "clean:pacts": "node -e \"const fs=require('fs');const path=require('path');const d=path.join(process.cwd(),'pacts');if(fs.existsSync(d)){for(const f of fs.readdirSync(d)){if(f.endsWith('.json'))fs.unlinkSync(path.join(d,f));}}\"",
     "test": "jest --testPathPattern=consumer --forceExit --runInBand",
     "test:consumer": "jest --testPathPattern=consumer --forceExit --runInBand",
     "test:provider": "jest --testPathPattern=provider --forceExit --runInBand --testTimeout=120000",

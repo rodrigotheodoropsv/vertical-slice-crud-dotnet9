@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { Verifier } from '@pact-foundation/pact';
 import { buildStateHandlers } from './stateHandlers';
 
@@ -15,8 +14,9 @@ const PACTS_DIR = path.join(__dirname, '..', 'pacts');
 const BROKER_URL = process.env.PACT_BROKER_BASE_URL;
 const BROKER_TOKEN = process.env.PACT_BROKER_TOKEN;
 const APP_VERSION = process.env.APP_VERSION || 'local';
-const CONSUMER = (process.env.PACT_CONSUMER || 'ProductsConsumer').trim().replace(/^['\"]|['\"]$/g, '');
+const CONSUMER = (process.env.PACT_CONSUMER || '').trim().replace(/^['\"]|['\"]$/g, '');
 const CONSUMERS = process.env.PACT_CONSUMERS;
+const DEFAULT_LOCAL_CONSUMERS = ['OasConsumer'];
 
 function readPactSafe(filePath: string): { consumer?: { name?: string }; provider?: { name?: string } } | null {
   try {
@@ -39,24 +39,21 @@ function resolveLocalPactUrls(): string[] {
     return (pact?.provider?.name || '').trim() === PROVIDER;
   });
 
-  if (CONSUMERS) {
-    const consumerSet = new Set(
-      CONSUMERS
+  const selectedConsumers = CONSUMERS
+    ? CONSUMERS
         .split(',')
         .map((c) => c.trim().replace(/^['\"]|['\"]$/g, ''))
-        .filter(Boolean),
-    );
+        .filter(Boolean)
+    : CONSUMER
+      ? [CONSUMER]
+      : DEFAULT_LOCAL_CONSUMERS;
+
+  if (selectedConsumers.length > 0) {
+    const consumerSet = new Set(selectedConsumers);
 
     return pactsForProvider.filter((filePath) => {
       const pact = readPactSafe(filePath);
       return consumerSet.has((pact?.consumer?.name || '').trim());
-    });
-  }
-
-  if (process.env.PACT_CONSUMER) {
-    return pactsForProvider.filter((filePath) => {
-      const pact = readPactSafe(filePath);
-      return (pact?.consumer?.name || '').trim() === CONSUMER;
     });
   }
 
@@ -92,7 +89,7 @@ describe('VerticalSliceCrudApi — Provider Verification', () => {
         throw new Error(`Missing pact files: ${missing.join(', ')}`);
       }
 
-      verifierOpts.pactUrls = localPacts.map((p) => pathToFileURL(p).href);
+      verifierOpts.pactUrls = localPacts;
     }
 
     const verifier = new Verifier(verifierOpts);

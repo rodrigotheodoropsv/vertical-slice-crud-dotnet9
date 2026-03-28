@@ -16,10 +16,9 @@ API CRUD completa construída com **Vertical Slice Architecture** em .NET 9, ban
 8. [Testes de Integração (.NET)](#-testes-de-integração-net)
 9. [Testes de Contrato — Consumer (PactumJS + Pact)](#-testes-de-contrato--consumer-pactumjs--pact)
 10. [Testes de Contrato — Provider (Pact Verifier)](#-testes-de-contrato--provider-pact-verifier)
-11. [Gravação de Contratos via C# (PactRecorder)](#-gravação-de-contratos-via-c-pactrecorder)
-12. [Geração de Contrato a partir do OAS](#-geração-de-contrato-a-partir-do-oas)
-13. [Publicação no Pact Broker](#-publicação-no-pact-broker)
-14. [Variáveis de Ambiente](#-variáveis-de-ambiente)
+11. [Geração de Contrato a partir do OAS](#-geração-de-contrato-a-partir-do-oas)
+12. [Publicação no Pact Broker](#-publicação-no-pact-broker)
+13. [Variáveis de Ambiente](#-variáveis-de-ambiente)
 
 ---
 
@@ -61,8 +60,7 @@ vertical-slice-crud-dotnet9/
 └── tests/
     ├── VerticalSliceCrud.IntegrationTests/
     │   ├── Fixtures/          → ApiWebApplicationFactory
-    │   ├── Products/          → Testes de integração por feature
-    │   └── PactRecording/     → Gravação de contratos Pact via C#
+    │   └── Products/          → Testes de integração por feature
     └── contract-tests/        → Testes de contrato em TypeScript
       ├── consumer/          → Teste consumer com PactumJS + Pact mock server (.ts)
       ├── provider/          → Verificação provider com Pact Verifier (.ts)
@@ -432,19 +430,46 @@ npm run test:all
 
 ---
 
-## 📝 Gravação de Contratos via C# (PactRecorder)
+## 🚀 Modelo Escalável para Times Externos (Recomendado)
 
-Além dos testes JavaScript, o projeto inclui um mecanismo alternativo de geração de contratos diretamente dos testes de integração .NET.
+Para escalar CDC com baixa intervenção:
 
-O `ContractRecordingTests` usa `WebApplicationFactory` para executar os mesmos 10 cenários e captura cada troca HTTP através de um `DelegatingHandler` customizado (`PactRecordingHandler`). O `PactRecorder` serializa tudo para Pact V3.
+1. Cada API consumer externa roda testes de contrato no próprio pipeline e publica seu pacto no broker.
+2. A API provider (`VerticalSliceCrudApi`) verifica automaticamente todos os pacts elegíveis do broker.
+3. Localmente, sem broker, o verifier usa por padrão apenas o pacto sintético `OasConsumer`.
+
+### Filtros locais do verifier
+
+No teste provider em `tests/contract-tests/provider/products.provider.test.ts`:
+
+1. Sem variáveis de ambiente: valida apenas `OasConsumer`.
+2. `PACT_CONSUMER=Nome`: valida um consumer específico.
+3. `PACT_CONSUMERS=A,B,C`: valida múltiplos consumers.
+
+### Template .NET para consumer externo
+
+Para acelerar onboarding dos times, existe um template pronto em:
+
+- `tests/consumer-template-dotnet/ProductsConsumer.ContractTests`
+
+Fluxo do template:
+
+1. Executa o client HTTP real do consumer contra mock server Pact.
+2. Extrai os campos de request/response automaticamente dos DTOs C# (via reflexão) para montar o contrato.
+3. Gera automaticamente o pacto `ExternalCatalogConsumer-VerticalSliceCrudApi.json`.
+4. Escreve o arquivo diretamente em `tests/contract-tests/pacts`.
+
+Executar:
 
 ```bash
-dotnet test --filter "FullyQualifiedName~ContractRecordingTests"
+dotnet test tests/consumer-template-dotnet/ProductsConsumer.ContractTests/ProductsConsumer.ContractTests.csproj
 ```
 
-Saída: `tests/contract-tests/pacts/IntegrationTestsConsumer-VerticalSliceCrudApi.json`
+Adaptação mínima por time:
 
-Este arquivo pode ser publicado no Pact Broker e verificado pela suite provider JavaScript exatamente da mesma forma.
+1. Trocar o nome do consumer no teste.
+2. Ajustar o `ProductApiClient` com os endpoints realmente usados.
+3. Publicar o pacto gerado no broker no pipeline do próprio consumer.
 
 ---
 
