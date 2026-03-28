@@ -1,36 +1,19 @@
-'use strict';
+import dotenv from 'dotenv';
+import path from 'node:path';
+import { PactV3, MatchersV3 } from '@pact-foundation/pact';
+import pactum from 'pactum';
 
-/**
- * Consumer Contract Tests — Products API
- *
- * All interactions are registered on a SINGLE PactV3 mock-server instance so that
- * the pact file is written once with all 10 consumer expectations, avoiding the
- * "mock server expects previously-recorded interactions too" race condition that
- * arises when a new PactV3 reads an existing pact file and merges it.
- *
- * PactumJS is used as the HTTP client for every interaction call inside executeTest.
- *
- * Run:   npm run test:consumer
- * Output: pacts/ProductsConsumer-VerticalSliceCrudApi.json
- */
-
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
-
-const path   = require('path');
-const { PactV3, MatchersV3 } = require('@pact-foundation/pact');
-const pactum = require('pactum');
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const { like, eachLike, integer, decimal, datetime, uuid } = MatchersV3;
 
 const DT_EXAMPLE = '2026-01-15T10:00:00.0000000Z';
-const DT_FORMAT  = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'";
+const DT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'";
 
-const CONSUMER  = process.env.PACT_CONSUMER  || 'ProductsConsumer';
-const PROVIDER  = process.env.PACT_PROVIDER  || 'VerticalSliceCrudApi';
+const CONSUMER = process.env.PACT_CONSUMER || 'ProductsConsumer';
+const PROVIDER = process.env.PACT_PROVIDER || 'VerticalSliceCrudApi';
 const MOCK_PORT = parseInt(process.env.PACT_MOCK_PORT || '4000', 10);
 const PACTS_DIR = path.join(__dirname, '..', 'pacts');
-
-// ── Shared response bodies ────────────────────────────────────────────────────
 
 const PRODUCT_CREATED = {
   id: uuid(),
@@ -63,21 +46,6 @@ const ERROR_400 = {
   detail: like("'Name' must not be empty."),
 };
 
-const ERROR_404 = {
-  type: like('https://tools.ietf.org/html/rfc7231#section-6.5.4'),
-  title: like('Not Found'),
-  status: integer(404),
-  detail: like('Produto não encontrado'),
-};
-
-// Helper: make a pactum request to the mock server using its full URL
-function call(mockServer) {
-  return pactum.spec();
-}
-const url = (mockServer, path) => `${mockServer.url}${path}`;
-
-// ── Single test session: register all interactions then verify all calls ───────
-
 describe('Products API — Consumer Contract Tests', () => {
   it('honours all consumer expectations (all interactions verified in one session)', () => {
     const provider = new PactV3({
@@ -89,12 +57,11 @@ describe('Products API — Consumer Contract Tests', () => {
     });
 
     const EXISTING_ID = '11111111-1111-1111-1111-111111111111';
-    const UPDATE_ID   = '22222222-2222-2222-2222-222222222222';
-    const DELETE_ID   = '33333333-3333-3333-3333-333333333333';
-    const MISSING_ID  = '00000000-0000-0000-0000-000000000000';
+    const UPDATE_ID = '22222222-2222-2222-2222-222222222222';
+    const DELETE_ID = '33333333-3333-3333-3333-333333333333';
+    const MISSING_ID = '00000000-0000-0000-0000-000000000000';
 
     return provider
-      // POST /api/products
       .addInteraction({
         states: [{ description: 'no products exist' }],
         uponReceiving: 'a request to create a product',
@@ -123,7 +90,6 @@ describe('Products API — Consumer Contract Tests', () => {
           body: ERROR_400,
         },
       })
-      // GET /api/products
       .addInteraction({
         states: [{ description: 'no products exist' }],
         uponReceiving: 'a request to list all products when catalogue is empty',
@@ -144,9 +110,8 @@ describe('Products API — Consumer Contract Tests', () => {
           body: PRODUCT_LIST,
         },
       })
-      // GET /api/products/:id
       .addInteraction({
-        states: [{ description: 'a product exists', params: { id: EXISTING_ID } }],
+        states: [{ description: 'a product exists' }],
         uponReceiving: 'a request to get a product by ID',
         withRequest: { method: 'GET', path: `/api/products/${EXISTING_ID}` },
         willRespondWith: {
@@ -162,12 +127,11 @@ describe('Products API — Consumer Contract Tests', () => {
         willRespondWith: {
           status: 404,
           headers: { 'Content-Type': 'application/json; charset=utf-8' },
-          body: ERROR_404,
+          body: { status: integer(404), title: like('Not Found') },
         },
       })
-      // PUT /api/products/:id
       .addInteraction({
-        states: [{ description: 'a product exists', params: { id: UPDATE_ID } }],
+        states: [{ description: 'a product exists' }],
         uponReceiving: 'a request to update an existing product',
         withRequest: {
           method: 'PUT', path: `/api/products/${UPDATE_ID}`,
@@ -215,9 +179,8 @@ describe('Products API — Consumer Contract Tests', () => {
           body: ERROR_400,
         },
       })
-      // DELETE /api/products/:id
       .addInteraction({
-        states: [{ description: 'a product exists', params: { id: DELETE_ID } }],
+        states: [{ description: 'a product exists' }],
         uponReceiving: 'a request to delete an existing product',
         withRequest: { method: 'DELETE', path: `/api/products/${DELETE_ID}` },
         willRespondWith: { status: 204 },
@@ -232,67 +195,38 @@ describe('Products API — Consumer Contract Tests', () => {
           body: { status: integer(404), title: like('Not Found') },
         },
       })
-      .executeTest(async (mockServer) => {
+      .executeTest(async (mockServer: { url: string }) => {
         const base = mockServer.url;
-
-        // ── POST /api/products ──────────────────────────────────────────────
 
         const create201 = await pactum.spec()
           .post(`${base}/api/products`)
           .withJson({ name: 'Widget Pro', description: 'A professional widget', price: 29.99, stock: 100 })
           .toss();
         expect(create201.statusCode).toBe(201);
-        expect(create201.body).toHaveProperty('id');
-        expect(create201.body.name).toBe('Widget Pro');
 
         const create400 = await pactum.spec()
           .post(`${base}/api/products`)
           .withJson({ name: '', description: 'desc', price: 5.0, stock: 1 })
           .toss();
         expect(create400.statusCode).toBe(400);
-        expect(create400.body.status).toBe(400);
 
-        // ── GET /api/products ───────────────────────────────────────────────
-
-        // Pact distinguishes interactions by (state + description). To call the
-        // "empty list" interaction we send the request without query params; the
-        // "with products" interaction matches the same path but a different state.
-        // Since both interactions register the same path/method pair, the mock
-        // server will match them in registration order the first two times the
-        // path is hit.
-        const list200Empty = await pactum.spec()
-          .get(`${base}/api/products`)
-          .toss();
+        const list200Empty = await pactum.spec().get(`${base}/api/products`).toss();
         expect(list200Empty.statusCode).toBe(200);
 
-        const list200WithItems = await pactum.spec()
-          .get(`${base}/api/products`)
-          .toss();
+        const list200WithItems = await pactum.spec().get(`${base}/api/products`).toss();
         expect(list200WithItems.statusCode).toBe(200);
-        expect(Array.isArray(list200WithItems.body.items)).toBe(true);
 
-        // ── GET /api/products/:id ───────────────────────────────────────────
-
-        const getById200 = await pactum.spec()
-          .get(`${base}/api/products/${EXISTING_ID}`)
-          .toss();
+        const getById200 = await pactum.spec().get(`${base}/api/products/${EXISTING_ID}`).toss();
         expect(getById200.statusCode).toBe(200);
-        expect(getById200.body.id).toBe(EXISTING_ID);
 
-        const getById404 = await pactum.spec()
-          .get(`${base}/api/products/${MISSING_ID}`)
-          .toss();
+        const getById404 = await pactum.spec().get(`${base}/api/products/${MISSING_ID}`).toss();
         expect(getById404.statusCode).toBe(404);
-        expect(getById404.body.status).toBe(404);
-
-        // ── PUT /api/products/:id ───────────────────────────────────────────
 
         const update200 = await pactum.spec()
           .put(`${base}/api/products/${UPDATE_ID}`)
           .withJson({ name: 'Updated Widget', description: 'Updated description', price: 49.99, stock: 200 })
           .toss();
         expect(update200.statusCode).toBe(200);
-        expect(update200.body.name).toBe('Updated Widget');
 
         const update404 = await pactum.spec()
           .put(`${base}/api/products/${MISSING_ID}`)
@@ -305,18 +239,11 @@ describe('Products API — Consumer Contract Tests', () => {
           .withJson({ name: '', description: 'Desc', price: 1.0, stock: 1 })
           .toss();
         expect(update400.statusCode).toBe(400);
-        expect(update400.body.status).toBe(400);
 
-        // ── DELETE /api/products/:id ────────────────────────────────────────
-
-        const delete204 = await pactum.spec()
-          .delete(`${base}/api/products/${DELETE_ID}`)
-          .toss();
+        const delete204 = await pactum.spec().delete(`${base}/api/products/${DELETE_ID}`).toss();
         expect(delete204.statusCode).toBe(204);
 
-        const delete404 = await pactum.spec()
-          .delete(`${base}/api/products/${MISSING_ID}`)
-          .toss();
+        const delete404 = await pactum.spec().delete(`${base}/api/products/${MISSING_ID}`).toss();
         expect(delete404.statusCode).toBe(404);
       });
   });

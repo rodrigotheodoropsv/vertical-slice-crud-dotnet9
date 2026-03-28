@@ -1,33 +1,10 @@
-'use strict';
+import dotenv from 'dotenv';
+import fs from 'node:fs';
+import path from 'node:path';
+import https from 'node:https';
+import http from 'node:http';
 
-/**
- * Publish Pact files to a Pact Broker.
- *
- * Usage:
- *   node scripts/publish-pacts.js
- *
- * Required environment variables (set in .env or CI secrets):
- *   PACT_BROKER_BASE_URL  – URL of the Pact Broker instance
- *   PACT_BROKER_TOKEN     – Bearer token (if authentication is enabled)
- *   APP_VERSION           – Consumer application version (e.g. git SHA)
- *
- * Optional:
- *   PACT_CONSUMER         – Consumer name (default: ProductsConsumer)
- *   PACT_PROVIDER         – Provider name (default: VerticalSliceCrudApi)
- *
- * The script reads every *.json file from the ../pacts/ directory and publishes
- * them to the configured broker.  It uses the Pact Broker HTTP API directly so
- * there is no additional CLI dependency required.
- */
-
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
-
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const http = require('http');
-
-// ── Configuration ─────────────────────────────────────────────────────────────
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const BROKER_URL = process.env.PACT_BROKER_BASE_URL;
 const BROKER_TOKEN = process.env.PACT_BROKER_TOKEN;
@@ -35,8 +12,8 @@ const APP_VERSION = process.env.APP_VERSION;
 const CONSUMER = process.env.PACT_CONSUMER || 'ProductsConsumer';
 const PACTS_DIR = path.join(__dirname, '..', 'pacts');
 
-function validateConfig() {
-  const missing = [];
+function validateConfig(): void {
+  const missing: string[] = [];
   if (!BROKER_URL) missing.push('PACT_BROKER_BASE_URL');
   if (!APP_VERSION) missing.push('APP_VERSION');
   if (missing.length > 0) {
@@ -46,9 +23,7 @@ function validateConfig() {
   }
 }
 
-// ── HTTP helper ───────────────────────────────────────────────────────────────
-
-function request(method, url, body, headers = {}) {
+function request(method: string, url: string, body?: unknown, headers: Record<string, string> = {}): Promise<{ status?: number; body: string }> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const transport = parsed.protocol === 'https:' ? https : http;
@@ -63,7 +38,7 @@ function request(method, url, body, headers = {}) {
         headers: {
           'Content-Type': 'application/json',
           ...(BROKER_TOKEN ? { Authorization: `Bearer ${BROKER_TOKEN}` } : {}),
-          ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+          ...(data ? { 'Content-Length': String(Buffer.byteLength(data)) } : {}),
           ...headers,
         },
       },
@@ -71,7 +46,7 @@ function request(method, url, body, headers = {}) {
         let raw = '';
         res.on('data', (chunk) => (raw += chunk));
         res.on('end', () => resolve({ status: res.statusCode, body: raw }));
-      }
+      },
     );
 
     req.on('error', reject);
@@ -80,10 +55,11 @@ function request(method, url, body, headers = {}) {
   });
 }
 
-// ── Publish ───────────────────────────────────────────────────────────────────
-
-async function publishPact(pactFilePath) {
-  const pact = JSON.parse(fs.readFileSync(pactFilePath, 'utf-8'));
+async function publishPact(pactFilePath: string): Promise<void> {
+  const pact = JSON.parse(fs.readFileSync(pactFilePath, 'utf-8')) as {
+    consumer?: { name?: string };
+    provider?: { name?: string };
+  };
   const consumer = pact.consumer?.name || CONSUMER;
   const provider = pact.provider?.name;
 
@@ -92,13 +68,12 @@ async function publishPact(pactFilePath) {
     return;
   }
 
-  // PUT /pacts/provider/{provider}/consumer/{consumer}/version/{version}
-  const url = `${BROKER_URL}/pacts/provider/${encodeURIComponent(provider)}/consumer/${encodeURIComponent(consumer)}/version/${encodeURIComponent(APP_VERSION)}`;
+  const url = `${BROKER_URL}/pacts/provider/${encodeURIComponent(provider)}/consumer/${encodeURIComponent(consumer)}/version/${encodeURIComponent(APP_VERSION as string)}`;
 
   console.log(`  Publishing: ${consumer} → ${provider} @ ${APP_VERSION}`);
   const result = await request('PUT', url, pact);
 
-  if (result.status >= 200 && result.status < 300) {
+  if ((result.status ?? 500) >= 200 && (result.status ?? 500) < 300) {
     console.log(`  ✓ Published (HTTP ${result.status})`);
   } else {
     console.error(`  ✗ Failed (HTTP ${result.status}): ${result.body}`);
@@ -106,7 +81,7 @@ async function publishPact(pactFilePath) {
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   validateConfig();
 
   const pactFiles = fs
@@ -116,7 +91,7 @@ async function main() {
 
   if (pactFiles.length === 0) {
     console.warn('\nNo pact files found in', PACTS_DIR);
-    console.warn('Run `npm run test:consumer` first to generate pact files.\n');
+    console.warn('Generate pacts before publishing.\n');
     process.exit(1);
   }
 
@@ -129,7 +104,7 @@ async function main() {
   console.log('\nDone.\n');
 }
 
-main().catch((err) => {
+main().catch((err: Error) => {
   console.error('\nUnhandled error:', err.message);
   process.exit(1);
 });

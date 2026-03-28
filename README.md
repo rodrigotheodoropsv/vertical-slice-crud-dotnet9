@@ -33,8 +33,8 @@ API CRUD completa construída com **Vertical Slice Architecture** em .NET 9, ban
 | Validação               | FluentValidation 11                               |
 | Arquitetura             | Vertical Slice (sem MediatR)                      |
 | Testes de integração    | xUnit + `Microsoft.AspNetCore.Mvc.Testing`        |
-| Testes de contrato (JS) | `@pact-foundation/pact` 16 + **PactumJS** 3       |
-| Runner de testes JS     | Jest 29                                           |
+| Testes de contrato (TS) | `@pact-foundation/pact` 16 + **PactumJS** 3       |
+| Runner de testes        | Jest 29 + ts-jest + TypeScript                    |
 
 ---
 
@@ -63,11 +63,11 @@ vertical-slice-crud-dotnet9/
     │   ├── Fixtures/          → ApiWebApplicationFactory
     │   ├── Products/          → Testes de integração por feature
     │   └── PactRecording/     → Gravação de contratos Pact via C#
-    └── contract-tests/        → Testes de contrato em JavaScript
-        ├── consumer/          → Teste consumer com PactumJS + Pact mock server
-        ├── provider/          → Verificação provider com Pact Verifier
+    └── contract-tests/        → Testes de contrato em TypeScript
+      ├── consumer/          → Teste consumer com PactumJS + Pact mock server (.ts)
+      ├── provider/          → Verificação provider com Pact Verifier (.ts)
         ├── pacts/             → Arquivos .json de contrato gerados
-        └── scripts/           → Publicação no Broker e geração via OAS
+      └── scripts/           → Publicação no Broker e geração via OAS (.ts)
 ```
 
 ---
@@ -312,7 +312,7 @@ A fixture `ApiWebApplicationFactory` cria um `HttpClient` apontado para a `TestS
 
 ## 🤝 Testes de Contrato — Consumer (PactumJS + Pact)
 
-A pasta `tests/contract-tests/` contém os testes de contrato escritos em JavaScript.
+A pasta `tests/contract-tests/` contém os testes de contrato escritos em TypeScript.
 
 ### Como funciona
 
@@ -356,8 +356,8 @@ Isso gera o arquivo `pacts/ProductsConsumer-VerticalSliceCrudApi.json` com **11 
 
 O PactumJS substitui `axios`/`fetch` nas chamadas dentro do `executeTest`:
 
-```js
-// consumer/products.consumer.test.js
+```ts
+// consumer/products.consumer.test.ts
 const create201 = await pactum.spec()
   .post(`${mockServer.url}/api/products`)
   .withJson({ name: 'Widget Pro', description: 'A professional widget', price: 29.99, stock: 100 })
@@ -450,7 +450,7 @@ Este arquivo pode ser publicado no Pact Broker e verificado pela suite provider 
 
 ## 🔧 Geração de Contrato a partir do OAS
 
-O script `generate-provider-pact-from-oas.js` converte o contrato OpenAPI da API em um arquivo Pact V3 automaticamente — útil para verificação provider sem precisar de consumer real.
+O script `generate-provider-pact-from-oas.ts` converte o contrato OpenAPI da API em um arquivo Pact V3 automaticamente — útil para verificação provider sem precisar de consumer real.
 
 ```bash
 cd tests/contract-tests
@@ -459,10 +459,10 @@ cd tests/contract-tests
 npm run generate:from-oas
 
 # A partir de uma URL customizada
-node scripts/generate-provider-pact-from-oas.js --oas-url http://meuservidor/openapi/v1.json
+tsx scripts/generate-provider-pact-from-oas.ts --oas-url http://meuservidor/openapi/v1.json
 
 # A partir de um arquivo local
-node scripts/generate-provider-pact-from-oas.js --oas-file ./openapi.json
+tsx scripts/generate-provider-pact-from-oas.ts --oas-file ./openapi.json
 ```
 
 **O que o script faz:**
@@ -499,7 +499,7 @@ npm run test:consumer
 npm run publish:pacts
 ```
 
-O script `publish-pacts.js` lê todos os `.json` da pasta `pacts/` e faz `PUT` para cada um no Broker via HTTP puro (sem dependência de CLI extra).
+O script `publish-pacts.ts` lê todos os `.json` da pasta `pacts/` e faz `PUT` para cada um no Broker via HTTP puro (sem dependência de CLI extra).
 
 ### Verificar com o Broker (provider)
 

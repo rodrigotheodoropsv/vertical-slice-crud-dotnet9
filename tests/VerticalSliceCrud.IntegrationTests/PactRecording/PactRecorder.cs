@@ -55,6 +55,20 @@ internal sealed class PactRecorder
         File.WriteAllText(filePath, json);
     }
 
+    /// <summary>
+    /// Writes the pact to the default pacts directory using
+    /// {consumer}-{provider}.json naming and returns the output path.
+    /// </summary>
+    public string WriteToDefaultFile()
+    {
+        var outputPath = Path.Combine(
+            ResolvePactsDirectory(),
+            $"{_consumer}-{_provider}.json");
+
+        WriteToFile(outputPath);
+        return outputPath;
+    }
+
     /// <summary>Returns the path to the solution root by walking up from the test binary.</summary>
     public static string ResolvePactsDirectory()
     {

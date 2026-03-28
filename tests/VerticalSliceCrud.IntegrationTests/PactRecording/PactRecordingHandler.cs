@@ -9,19 +9,26 @@ namespace VerticalSliceCrud.IntegrationTests.PactRecording;
 ///
 /// Call <see cref="SetNext"/> immediately before each HTTP call you want to
 /// capture to attach a human-readable description and a set of provider states.
-/// Calls made without a prior <see cref="SetNext"/> are silently forwarded and
-/// not recorded, making it easy to perform setup requests without polluting the
-/// generated contract.
+/// Calls made without a prior <see cref="SetNext"/> can also be captured in
+/// auto mode with generated description/provider-state metadata.
 /// </summary>
 internal sealed class PactRecordingHandler : DelegatingHandler
 {
     private readonly PactRecorder _recorder;
+    private readonly bool _autoRecordUnconfigured;
+    private readonly string _defaultAutoProviderState;
     private string? _pendingDescription;
     private string[]? _pendingStates;
+    private bool _suppressNextRecording;
 
-    public PactRecordingHandler(PactRecorder recorder)
+    public PactRecordingHandler(
+        PactRecorder recorder,
+        bool autoRecordUnconfigured = false,
+        string defaultAutoProviderState = "auto recorded state")
     {
         _recorder = recorder;
+        _autoRecordUnconfigured = autoRecordUnconfigured;
+        _defaultAutoProviderState = defaultAutoProviderState;
     }
 
     /// <summary>
@@ -34,14 +41,25 @@ internal sealed class PactRecordingHandler : DelegatingHandler
         _pendingStates      = providerStates;
     }
 
+    /// <summary>
+    /// Skips recording for the next HTTP call. Useful for setup/fixture requests
+    /// when auto recording is enabled.
+    /// </summary>
+    public void SuppressNextRecording()
+    {
+        _suppressNextRecording = true;
+    }
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         // Capture pending metadata before the async call resets it
         var description = _pendingDescription;
         var states      = _pendingStates ?? [];
+        var suppressThisCall = _suppressNextRecording;
         _pendingDescription = null;
         _pendingStates      = null;
+        _suppressNextRecording = false;
 
         // Buffer request content so we can read it here AND the inner handler can too
         string? reqBodyJson = null;
@@ -53,9 +71,18 @@ internal sealed class PactRecordingHandler : DelegatingHandler
 
         var response = await base.SendAsync(request, cancellationToken);
 
-        // Only record if SetNext was called for this interaction
-        if (description is not null)
+        // Record if explicitly configured via SetNext, or via auto mode.
+        if (!suppressThisCall)
         {
+            if (description is null)
+            {
+                if (!_autoRecordUnconfigured)
+                    return response;
+
+                description = BuildAutoDescription(request, response);
+                states = [_defaultAutoProviderState];
+            }
+
             // Buffer response content so we can read it here AND the caller can too
             await response.Content.LoadIntoBufferAsync(cancellationToken);
             await RecordAsync(request, reqBodyJson, response, description, states);
@@ -115,5 +142,12 @@ internal sealed class PactRecordingHandler : DelegatingHandler
             ProviderStates: states,
             Request:        pactReq,
             Response:       pactRes));
+    }
+
+    private static string BuildAutoDescription(HttpRequestMessage req, HttpResponseMessage res)
+    {
+        var method = req.Method.Method;
+        var path = req.RequestUri?.AbsolutePath ?? "/";
+        return $"auto {method} {path} -> {(int)res.StatusCode}";
     }
 }
