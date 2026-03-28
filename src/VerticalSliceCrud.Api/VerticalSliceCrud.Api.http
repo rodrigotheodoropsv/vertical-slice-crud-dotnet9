@@ -1,0 +1,44 @@
+@VerticalSliceCrud.Api_HostAddress = http://localhost:5055
+
+### List all products
+GET {{VerticalSliceCrud.Api_HostAddress}}/api/products?page=1&pageSize=20
+Accept: application/json
+
+###
+
+### Create a product
+POST {{VerticalSliceCrud.Api_HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Produto Exemplo",
+  "description": "Descrição do produto",
+  "price": 99.99,
+  "stock": 10
+}
+
+###
+
+### Get product by ID (replace with a valid GUID)
+GET {{VerticalSliceCrud.Api_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+### Update product (replace with a valid GUID)
+PUT {{VerticalSliceCrud.Api_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "name": "Produto Atualizado",
+  "description": "Nova descrição",
+  "price": 149.99,
+  "stock": 5
+}
+
+###
+
+### Delete product (replace with a valid GUID)
+DELETE {{VerticalSliceCrud.Api_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
+
+###
