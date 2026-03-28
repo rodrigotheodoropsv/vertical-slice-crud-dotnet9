@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/VerticalSliceCrud.Api/VerticalSliceCrud.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VerticalSliceCrud.IntegrationTests/VerticalSliceCrud.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

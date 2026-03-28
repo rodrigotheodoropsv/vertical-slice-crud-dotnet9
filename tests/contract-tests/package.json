@@ -1,0 +1,22 @@
+{
+  "name": "vertical-slice-contract-tests",
+  "version": "1.0.0",
+  "description": "PactumJS consumer contract tests and provider verification for VerticalSliceCrud API",
+  "private": true,
+  "scripts": {
+    "test": "jest --testPathPattern=consumer --forceExit --runInBand",
+    "test:consumer": "jest --testPathPattern=consumer --forceExit --runInBand",
+    "test:provider": "jest --testPathPattern=provider --forceExit --runInBand --testTimeout=120000",
+    "test:all": "npm run test:consumer && npm run test:provider",
+    "publish:pacts": "node scripts/publish-pacts.js"
+  },
+  "dependencies": {
+    "@pact-foundation/pact": "16.3.0",
+    "axios": "1.14.0",
+    "dotenv": "16.4.7",
+    "pactum": "3.7.2"
+  },
+  "devDependencies": {
+    "jest": "29.7.0"
+  }
+}

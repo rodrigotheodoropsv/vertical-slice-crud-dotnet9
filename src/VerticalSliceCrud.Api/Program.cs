@@ -63,3 +63,6 @@ app.MapUpdateProductEndpoint();
 app.MapDeleteProductEndpoint();
 
 app.Run();
+
+// Exposes the Program class for WebApplicationFactory in integration/contract tests
+public partial class Program { }
