@@ -117,27 +117,40 @@ export default function OrderNote({ order, branding, onClose }: Props) {
                 <TableCell>Produto</TableCell>
                 <TableCell align="center">Qtd</TableCell>
                 <TableCell align="right">Vlr Unit.</TableCell>
-                <TableCell align="right">Subtotal</TableCell>
+                <TableCell align="right">Desconto</TableCell>
+                <TableCell align="right">Total</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {order.itens.map((item) => {
-                const { idCol, nomeCol, precoCol } = order.fieldMapping;
+                const { idCol, nomeCol } = order.fieldMapping;
                 const id = String(item.row[idCol] ?? '');
                 const nome = String(item.row[nomeCol] ?? '');
-                const price = Number(item.row[precoCol] ?? 0);
                 return (
                   <TableRow key={id}>
                     <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{id}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{nome}</TableCell>
                     <TableCell align="center">{item.quantidade}</TableCell>
-                    <TableCell align="right">{formatBRL(price)}</TableCell>
+                    <TableCell align="right">{formatBRL(item.unitPrice)}</TableCell>
+                    <TableCell align="right">{item.discountTotal > 0 ? formatBRL(item.discountTotal) : '—'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</TableCell>
                   </TableRow>
                 );
               })}
               <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
-                <TableCell colSpan={4} align="right" sx={{ fontWeight: 800 }}>TOTAL DO PEDIDO</TableCell>
+                <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Subtotal bruto</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(order.grossTotal)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Desconto em itens</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, color: order.itemDiscountTotal > 0 ? 'success.main' : 'text.primary' }}>{formatBRL(order.itemDiscountTotal)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Desconto geral</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, color: order.orderDiscountTotal > 0 ? 'success.main' : 'text.primary' }}>{formatBRL(order.orderDiscountTotal)}</TableCell>
+              </TableRow>
+              <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
+                <TableCell colSpan={5} align="right" sx={{ fontWeight: 800 }}>TOTAL DO PEDIDO</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main' }}>{formatBRL(order.total)}</TableCell>
               </TableRow>
             </TableBody>

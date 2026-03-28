@@ -23,11 +23,19 @@ import OrderDetails from './components/OrderDetails';
 import OrderNote from './components/OrderNote';
 import EmailModal from './components/EmailModal';
 
-import { generateOrderNumber, formatDateBR, formatBRL } from './utils/productMapper';
+import { generateOrderNumber, formatDateBR, formatBRL, guessFieldMapping } from './utils/productMapper';
+import { fetchDefaultCatalog } from './utils/fileParser';
 import { BRANDING } from './utils/branding';
+import {
+  DEFAULT_DISCOUNT,
+  buildOrderItem,
+  calculateOrderItemPricing,
+  calculateOrderSummary,
+} from './utils/pricing';
 import type {
   CatalogState,
   SpreadsheetRow,
+  DiscountConfig,
   OrderItem,
   Order,
   ClientInfo,
@@ -86,6 +94,7 @@ export default function App() {
   const [condicaoPagamento, setCondicaoPagamento] = useState('');
   const [prazoEntrega, setPrazoEntrega] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [orderDiscount, setOrderDiscount] = useState<DiscountConfig>(DEFAULT_DISCOUNT);
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>(loadSmtpConfig);
 
   const [showNote, setShowNote] = useState(false);
@@ -93,6 +102,24 @@ export default function App() {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(true);
   const [logoVisible, setLogoVisible] = useState(true);
+
+  // Auto-load default catalog from public/data/ on first visit (no session data)
+  useEffect(() => {
+    if (loadCatalog()) return; // session already has a catalog
+    fetchDefaultCatalog().then((result) => {
+      if (!result) return;
+      const { headers, rows, fileName } = result;
+      const newCatalog: CatalogState = {
+        fileName,
+        allHeaders: headers,
+        activeColumns: headers,
+        rows,
+        fieldMapping: guessFieldMapping(headers),
+      };
+      setCatalog(newCatalog);
+      toast.success(`Catálogo padrão carregado: ${rows.length} produtos`, { icon: '📦' });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify(smtpConfig));
@@ -128,13 +155,13 @@ export default function App() {
         }
         return prev.map((i) =>
           String(i.row[idCol] ?? '') === id
-            ? { ...i, quantidade: newQty, subtotal: newQty * price }
+            ? { ...i, ...calculateOrderItemPricing(price, newQty, i.discount) }
             : i,
         );
       }
       toastType = 'success';
       toastMessage = `${String(row[nomeCol] ?? '')} adicionado ao pedido`;
-      return [...prev, { row, quantidade: quantity, subtotal: quantity * price }];
+      return [...prev, buildOrderItem(row, quantity, catalog.fieldMapping, DEFAULT_DISCOUNT)];
     });
 
     if (toastType === 'error') toast.error(toastMessage);
@@ -165,7 +192,19 @@ export default function App() {
         const stock = Number(i.row[estoqueCol] ?? 0);
         const price = Number(i.row[precoCol] ?? 0);
         const safeQty = Math.min(qty, stock);
-        return { ...i, quantidade: safeQty, subtotal: safeQty * price };
+        return { ...i, ...calculateOrderItemPricing(price, safeQty, i.discount) };
+      }),
+    );
+  }, [catalog]);
+
+  const handleItemDiscountChange = useCallback((rowId: string, discount: DiscountConfig) => {
+    if (!catalog) return;
+    const { idCol, precoCol } = catalog.fieldMapping;
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (String(item.row[idCol] ?? '') !== rowId) return item;
+        const price = Number(item.row[precoCol] ?? 0);
+        return { ...item, ...calculateOrderItemPricing(price, item.quantidade, discount) };
       }),
     );
   }, [catalog]);
@@ -182,13 +221,19 @@ export default function App() {
     if (!client.razaoSocial || !client.cnpj) { toast.error('Preencha Razão Social e CNPJ do cliente.'); return null; }
     if (!vendedor || !condicaoPagamento || !prazoEntrega) { toast.error('Preencha Vendedor, Condição de Pagamento e Prazo de Entrega.'); return null; }
     const now = new Date();
+    const summary = calculateOrderSummary(cartItems, orderDiscount);
     return {
       numero: generateOrderNumber(),
       data: formatDateBR(now.toISOString().slice(0, 10)),
       hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       cliente: client,
       itens: cartItems,
-      total: cartItems.reduce((s, i) => s + i.subtotal, 0),
+      grossTotal: summary.grossTotal,
+      itemsSubtotal: summary.itemsSubtotal,
+      itemDiscountTotal: summary.itemDiscountTotal,
+      orderDiscount,
+      orderDiscountTotal: summary.orderDiscountTotal,
+      total: summary.total,
       observacoes,
       condicaoPagamento,
       prazoEntrega,
@@ -212,7 +257,8 @@ export default function App() {
     setShowEmail(true);
   }
 
-  const total = cartItems.reduce((s, i) => s + i.subtotal, 0);
+  const pricingSummary = calculateOrderSummary(cartItems, orderDiscount);
+  const total = pricingSummary.total;
   const hasProducts = catalog !== null;
   const hasItems = cartItems.length > 0;
 
@@ -223,6 +269,7 @@ export default function App() {
     setCondicaoPagamento('');
     setPrazoEntrega('');
     setObservacoes('');
+    setOrderDiscount(DEFAULT_DISCOUNT);
     toast('Pedido limpo.', { icon: '🗑️' });
   }
 
@@ -285,7 +332,7 @@ export default function App() {
               <Typography variant="subtitle1">Catálogo de Produtos</Typography>
               <Chip label="CSV ou XLSX" size="small" variant="outlined" sx={{ ml: 0.5 }} />
             </Stack>
-            <FileUploader onLoad={handleFileParsed} />
+            <FileUploader onLoad={handleFileParsed} defaultCatalog={catalog} />
           </Paper>
 
           {/* Step 2 — Selecionar Produtos */}
@@ -330,16 +377,26 @@ export default function App() {
                 <StepBadge n={3} />
                 <Typography variant="subtitle1" sx={{ flex: 1 }}>Itens do Pedido</Typography>
                 {hasItems && (
-                  <Typography variant="subtitle2" color="primary">
+                  <Stack alignItems="flex-end" spacing={0.25}>
+                    {pricingSummary.itemDiscountTotal + pricingSummary.orderDiscountTotal > 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        Economia: {formatBRL(pricingSummary.itemDiscountTotal + pricingSummary.orderDiscountTotal)}
+                      </Typography>
+                    )}
+                    <Typography variant="subtitle2" color="primary">
                     Total: {formatBRL(total)}
-                  </Typography>
+                    </Typography>
+                  </Stack>
                 )}
               </Stack>
               <OrderCart
                 items={cartItems}
                 fieldMapping={catalog!.fieldMapping}
+                orderDiscount={orderDiscount}
                 onRemove={handleRemoveItem}
                 onChangeQty={handleChangeQty}
+                onItemDiscountChange={handleItemDiscountChange}
+                onOrderDiscountChange={setOrderDiscount}
               />
             </Paper>
           )}
@@ -357,6 +414,8 @@ export default function App() {
                 condicaoPagamento={condicaoPagamento}
                 prazoEntrega={prazoEntrega}
                 observacoes={observacoes}
+                totalPedido={total}
+                descontoPedido={pricingSummary.orderDiscountTotal}
                 onChange={handleOrderDetail}
               />
             </Stack>

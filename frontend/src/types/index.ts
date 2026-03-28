@@ -28,6 +28,10 @@ export interface CatalogState {
 export interface OrderItem {
   row: SpreadsheetRow;
   quantidade: number;
+  unitPrice: number;
+  discount: DiscountConfig;
+  grossTotal: number;
+  discountTotal: number;
   subtotal: number;
 }
 
@@ -37,6 +41,11 @@ export interface Order {
   hora: string;
   cliente: ClientInfo;
   itens: OrderItem[];
+  grossTotal: number;
+  itemsSubtotal: number;
+  itemDiscountTotal: number;
+  orderDiscount: DiscountConfig;
+  orderDiscountTotal: number;
   total: number;
   observacoes?: string;
   condicaoPagamento: string;
@@ -52,6 +61,13 @@ export interface ClientInfo {
   email: string;
   telefone: string;
   endereco: string;
+}
+
+export type DiscountKind = 'value' | 'percent';
+
+export interface DiscountConfig {
+  kind: DiscountKind;
+  amount: number;
 }
 
 // ─── SMTP / Email ─────────────────────────────────────────────────────────────

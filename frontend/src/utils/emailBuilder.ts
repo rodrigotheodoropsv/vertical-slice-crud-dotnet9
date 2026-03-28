@@ -4,12 +4,13 @@ import { getAbsoluteAssetUrl } from './branding';
 
 /** Build the full plain-text body for the order email. */
 export function buildEmailBody(order: Order): string {
-  const { idCol, nomeCol, precoCol } = order.fieldMapping;
+  const { idCol, nomeCol } = order.fieldMapping;
   const itemLines = order.itens
     .map(
       (item, i) =>
         `  ${i + 1}. ${String(item.row[nomeCol] ?? '')} (${String(item.row[idCol] ?? '')}) — ` +
-        `${item.quantidade} × ${formatBRL(Number(item.row[precoCol] ?? 0))} = ${formatBRL(item.subtotal)}`,
+        `${item.quantidade} × ${formatBRL(item.unitPrice)} ` +
+        `${item.discountTotal > 0 ? `(- ${formatBRL(item.discountTotal)}) ` : ''}= ${formatBRL(item.subtotal)}`,
     )
     .join('\n');
 
@@ -35,6 +36,9 @@ Segue abaixo o pedido de vendas emitido pela nossa equipe comercial.
 ${itemLines}
 
 ──────────────────────────────────────────
+  SUBTOTAL BRUTO : ${formatBRL(order.grossTotal)}
+  DESC. EM ITENS : ${formatBRL(order.itemDiscountTotal)}
+  DESC. NO PEDIDO: ${formatBRL(order.orderDiscountTotal)}
   TOTAL DO PEDIDO: ${formatBRL(order.total)}
 ──────────────────────────────────────────
 
@@ -51,7 +55,7 @@ ${order.vendedor}
 
 /** Build an HTML email body for richer clients. */
 export function buildEmailHtml(order: Order, branding: BrandingConfig): string {
-  const { idCol, nomeCol, precoCol } = order.fieldMapping;
+  const { idCol, nomeCol } = order.fieldMapping;
   const rows = order.itens
     .map(
       (item, i) => `
@@ -59,7 +63,8 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig): string {
       <td style="padding:8px 12px;border:1px solid #e5e7eb">${String(item.row[idCol] ?? '')}</td>
       <td style="padding:8px 12px;border:1px solid #e5e7eb">${String(item.row[nomeCol] ?? '')}</td>
       <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center">${item.quantidade}</td>
-      <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right">${formatBRL(Number(item.row[precoCol] ?? 0))}</td>
+      <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right">${formatBRL(item.unitPrice)}</td>
+      <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right">${item.discountTotal > 0 ? formatBRL(item.discountTotal) : '—'}</td>
       <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:600">${formatBRL(item.subtotal)}</td>
     </tr>`,
     )
@@ -97,11 +102,24 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig): string {
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:left">Produto</th>
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:center">Qtd</th>
           <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:right">Vlr Unit.</th>
-          <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:right">Subtotal</th>
+          <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:right">Desconto</th>
+          <th style="padding:10px 12px;border:1px solid #1e3a8a;text-align:right">Total</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
+        <tr style="background:#f0f9ff">
+          <td colspan="5" style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:600">Subtotal bruto</td>
+          <td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700">${formatBRL(order.grossTotal)}</td>
+        </tr>
+        <tr style="background:#f8fafc">
+          <td colspan="5" style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:600">Desconto em itens</td>
+          <td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;color:#15803d">${formatBRL(order.itemDiscountTotal)}</td>
+        </tr>
+        <tr style="background:#f8fafc">
+          <td colspan="5" style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:600">Desconto geral</td>
+          <td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;color:#15803d">${formatBRL(order.orderDiscountTotal)}</td>
+        </tr>
         <tr style="background:#f0f9ff">
           <td colspan="5" style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:600">TOTAL</td>
           <td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;font-size:16px;color:#1e40af">${formatBRL(order.total)}</td>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Alert,
   Box,
@@ -27,6 +27,9 @@ import type { CatalogState, FieldMapping, SpreadsheetRow } from '../types';
 
 interface Props {
   onLoad: (catalog: CatalogState) => void;
+  /** Catalog loaded externally (e.g. auto-loaded from public/data). Shows the
+   * component in the "done" state so the user sees it is already loaded. */
+  defaultCatalog?: CatalogState | null;
 }
 
 const FIELD_LABELS: Record<keyof FieldMapping, string> = {
@@ -36,7 +39,7 @@ const FIELD_LABELS: Record<keyof FieldMapping, string> = {
   estoqueCol: 'Coluna de Estoque',
 };
 
-export default function FileUploader({ onLoad }: Props) {
+export default function FileUploader({ onLoad, defaultCatalog }: Props) {
   const [allHeaders, setAllHeaders] = useState<string[]>([]);
   const [activeColumns, setActiveColumns] = useState<string[]>([]);
   const [rows, setRows] = useState<SpreadsheetRow[]>([]);
@@ -46,6 +49,17 @@ export default function FileUploader({ onLoad }: Props) {
   const [fileName, setFileName] = useState('');
   const [dragging, setDragging] = useState(false);
   const [step, setStep] = useState<'idle' | 'select' | 'done'>('idle');
+
+  // Sync with externally auto-loaded catalog (e.g. fetched from public/data/)
+  useEffect(() => {
+    if (!defaultCatalog || step !== 'idle') return;
+    setAllHeaders(defaultCatalog.allHeaders);
+    setActiveColumns(defaultCatalog.activeColumns);
+    setRows(defaultCatalog.rows);
+    setFieldMapping(defaultCatalog.fieldMapping);
+    setFileName(defaultCatalog.fileName);
+    setStep('done');
+  }, [defaultCatalog]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleFile(file: File) {
     try {

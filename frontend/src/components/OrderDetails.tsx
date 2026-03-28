@@ -14,6 +14,8 @@ interface Props {
   condicaoPagamento: string;
   prazoEntrega: string;
   observacoes: string;
+  totalPedido: number;
+  descontoPedido: number;
   onChange: (field: string, value: string) => void;
 }
 
@@ -39,13 +41,18 @@ const DELIVERY_OPTIONS = [
   'A combinar',
 ];
 
-export default function OrderDetails({ vendedor, condicaoPagamento, prazoEntrega, observacoes, onChange }: Props) {
+import { formatBRL } from '../utils/productMapper';
+
+export default function OrderDetails({ vendedor, condicaoPagamento, prazoEntrega, observacoes, totalPedido, descontoPedido, onChange }: Props) {
   return (
     <Card variant="outlined" sx={{ borderRadius: 2.5 }}>
       <CardContent sx={{ p: { xs: 2.2, sm: 2.8 } }}>
         <Stack direction="row" spacing={1} alignItems="center" mb={2}>
           <DetailsIcon color="primary" fontSize="small" />
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Detalhes do Pedido</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+            Fechamento atual: {formatBRL(totalPedido)}{descontoPedido > 0 ? ` · desconto ${formatBRL(descontoPedido)}` : ''}
+          </Typography>
         </Stack>
 
         <Grid container spacing={1.5}>
