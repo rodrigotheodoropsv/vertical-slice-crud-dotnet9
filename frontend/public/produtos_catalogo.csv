@@ -1,0 +1,31 @@
+ID,Nome,Categoria,Unidade,Preço Unitário,Estoque,Fabricante,NCM,Peso (kg),Descrição
+P001,Notebook Dell Inspiron 15,Informática,UN,3499.90,48,Dell,8471.30.19,2.10,Notebook 15.6" Intel Core i5 12ª Geração 8GB RAM 256GB SSD
+P002,Monitor LG 24" Full HD,Informática,UN,899.90,62,LG,8528.52.40,3.80,Monitor IPS 24 polegadas resolução 1920x1080 HDMI DisplayPort
+P003,Teclado Mecânico Redragon K552,Periféricos,UN,229.90,130,Redragon,8471.60.52,0.85,Teclado mecânico switch vermelho RGB ABNT2
+P004,Mouse Logitech MX Master 3,Periféricos,UN,449.90,95,Logitech,8471.60.53,0.14,Mouse sem fio Bluetooth 7 botões 4000 DPI
+P005,Headset Corsair HS60 Pro,Áudio,UN,319.90,74,Corsair,8518.30.00,0.32,Headset gamer surround 7.1 microfone removível
+P006,Webcam Logitech C920,Periféricos,UN,549.90,40,Logitech,8525.80.19,0.16,Webcam Full HD 1080p 30fps autofoco USB
+P007,SSD Kingston 500GB SATA,Armazenamento,UN,259.90,200,Kingston,8471.70.10,0.06,SSD 2.5" SATA III leitura 550MB/s gravação 500MB/s
+P008,Memória RAM Corsair 16GB DDR4,Componentes,UN,349.90,88,Corsair,8473.30.49,0.05,Memória DDR4 3200MHz CL16 kit 2x8GB
+P009,Processador Intel Core i7-13700K,Componentes,UN,1899.90,25,Intel,8542.31.90,0.04,Processador LGA1700 16 núcleos 24 threads 3.4GHz
+P010,Placa de Vídeo RTX 4060 8GB,Componentes,UN,2299.90,18,NVIDIA,8473.30.49,0.85,GPU GDDR6 128-bit DLSS 3 Ray Tracing
+P011,Roteador Wi-Fi 6 TP-Link AX3000,Redes,UN,479.90,57,TP-Link,8517.62.10,0.73,Roteador dual-band 2402+574Mbps 4 antenas MU-MIMO
+P012,Switch 8 Portas Gigabit TP-Link,Redes,UN,159.90,83,TP-Link,8517.62.30,0.35,Switch não gerenciável 8 portas RJ45 Gigabit
+P013,Impressora HP LaserJet Pro M404n,Impressão,UN,1649.90,22,HP,8443.31.00,7.90,Impressora laser monocromática 40ppm USB Ethernet
+P014,Cartucho HP 664XL Preto,Impressão,UN,79.90,310,HP,3215.11.00,0.06,Cartucho de tinta para HP DeskJet rendimento 480 páginas
+P015,Papel Sulfite A4 500fls Chamex,Papelaria,Resma,29.90,500,APP,4802.56.99,2.30,Papel offset 75g/m² brancura 91 ISO
+P016,Nobreak APC 1500VA Smart,Elétrica,UN,1129.90,31,APC,8504.40.40,7.40,Nobreak senoidal 1500VA 900W 8 tomadas USB gerenciável
+P017,Cabo HDMI 2.0 2m Goldentec,Cabos,UN,39.90,420,Goldentec,8544.42.00,0.18,Cabo HDMI 4K 60Hz 2 metros conectores banhados a ouro
+P018,Hub USB-C 7 em 1 Multilaser,Acessórios,UN,149.90,115,Multilaser,8473.30.49,0.09,Hub USB-C HDMI 4K USB 3.0 leitor SD TF entrega 87W
+P019,Suporte Articulado Monitor 27",Ergonomia,UN,219.90,67,Fortrek,9403.20.00,2.10,Suporte com braço articulado VESA 75x100 carga máx 8kg
+P020,Filtro de Linha 5 Tomadas CLAMPER,Elétrica,UN,89.90,240,CLAMPER,8536.69.90,0.42,Filtro de linha DPS proteção até 25kA 5 tomadas NBR 14136
+P021,Licença Office 365 Business 1 Ano,Software,Licença,499.00,999,Microsoft,4904.00.00,0.00,Assinatura anual inclui Word Excel PowerPoint Teams 1TB OneDrive
+P022,Antivírus Kaspersky 3 Dispositivos,Software,Licença,179.90,999,Kaspersky,4904.00.00,0.00,Proteção total 1 ano 3 dispositivos Windows Mac Android
+P023,Cadeira Gamer ThunderX3 EC3,Mobiliário,UN,1299.90,15,ThunderX3,9401.61.00,18.50,Cadeira ergonômica inclinação 180° apoio lombar ajustável
+P024,Mesa para Computador 120x60cm,Mobiliário,UN,649.90,10,Tecno Mobili,9403.30.00,32.00,Mesa em MDP 120x60cm com prateleira para CPU e gaveta
+P025,Webcam 4K Elgato Facecam,Periféricos,UN,1099.90,28,Elgato,8525.80.19,0.16,Webcam 4K 60fps sensor Sony para streaming e videoconferência
+P026,Microfone Condensador Blue Yeti,Áudio,UN,799.90,35,Blue,8518.10.00,0.55,Microfone USB 4 padrões polares para podcast e streaming
+P027,HD Externo Seagate 2TB USB 3.0,Armazenamento,UN,329.90,76,Seagate,8471.70.10,0.19,HD portátil 2TB USB 3.0 compatível Windows Mac
+P028,Pen Drive SanDisk 64GB Ultra,Armazenamento,UN,59.90,380,SanDisk,8471.70.40,0.01,USB 3.0 leitura até 130MB/s
+P029,Fonte ATX 600W 80 Plus Bronze,Componentes,UN,289.90,44,Corsair,8504.40.19,1.65,Fonte modular 600W certificação 80 Plus Bronze PFC ativo
+P030,Placa-Mãe Asus TUF B660M-PLUS,Componentes,UN,899.90,20,ASUS,8473.30.49,0.83,Motherboard mATX LGA1700 DDR4 PCIe 4.0 WiFi 6 Bluetooth
