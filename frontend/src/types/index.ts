@@ -63,3 +63,11 @@ export interface SmtpConfig {
   toEmail: string;
   fromName: string;
 }
+
+// ─── Branding ───────────────────────────────────────────────────────────────
+
+export interface BrandingConfig {
+  companyName: string;
+  logoPath: string;
+  logoAlt: string;
+}

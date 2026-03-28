@@ -1,6 +1,24 @@
+import { memo } from 'react';
+import {
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
+import {
+  DeleteOutline as DeleteIcon,
+  ShoppingCartOutlined as CartIcon,
+} from '@mui/icons-material';
+
 import type { FieldMapping, OrderItem } from '../types';
 import { formatBRL, getNumber } from '../utils/productMapper';
-import { Trash2, ShoppingCart } from 'lucide-react';
 
 interface Props {
   items: OrderItem[];
@@ -9,85 +27,92 @@ interface Props {
   onChangeQty: (rowId: string, qty: number) => void;
 }
 
-export default function OrderCart({ items, fieldMapping, onRemove, onChangeQty }: Props) {
+function OrderCart({ items, fieldMapping, onRemove, onChangeQty }: Props) {
   const { idCol, nomeCol, precoCol, estoqueCol } = fieldMapping;
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50">
-        <ShoppingCart className="h-10 w-10" />
-        <p className="font-medium text-sm">Nenhum item adicionado ainda</p>
-        <p className="text-xs">Selecione produtos no catálogo acima</p>
-      </div>
+      <Paper
+        variant="outlined"
+        sx={{
+          py: 7,
+          px: 3,
+          textAlign: 'center',
+          borderRadius: 2.5,
+          borderStyle: 'dashed',
+          color: 'text.secondary',
+        }}
+      >
+        <CartIcon sx={{ fontSize: 42, mb: 1 }} />
+        <Typography sx={{ fontWeight: 700, color: 'text.primary' }}>Nenhum item adicionado ainda</Typography>
+        <Typography variant="body2">Selecione produtos no catalogo acima</Typography>
+      </Paper>
     );
   }
 
   const total = items.reduce((s, i) => s + i.subtotal, 0);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-          <tr>
-            <th className="px-4 py-3 text-left">Produto</th>
-            <th className="px-4 py-3 text-right">Vlr Unit.</th>
-            <th className="px-4 py-3 text-center">Qtd</th>
-            <th className="px-4 py-3 text-right">Subtotal</th>
-            <th className="px-4 py-3 text-center">–</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
+    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2.5 }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Produto</TableCell>
+            <TableCell align="right">Vlr Unit.</TableCell>
+            <TableCell align="center">Qtd</TableCell>
+            <TableCell align="right">Subtotal</TableCell>
+            <TableCell align="center">-</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {items.map((item) => {
             const id = String(item.row[idCol] ?? '');
             const nome = String(item.row[nomeCol] ?? '');
             const price = getNumber(item.row, precoCol);
             const stock = getNumber(item.row, estoqueCol);
             return (
-              <tr key={id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900">{nome}</div>
-                  <div className="text-xs text-gray-400 font-mono">{id}</div>
-                </td>
-                <td className="px-4 py-3 text-right text-gray-600">{formatBRL(price)}</td>
-                <td className="px-4 py-3 text-center">
-                  <input
+              <TableRow key={id} hover>
+                <TableCell>
+                  <Typography sx={{ fontWeight: 600 }}>{nome}</Typography>
+                  <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{id}</Typography>
+                </TableCell>
+                <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatBRL(price)}</TableCell>
+                <TableCell align="center">
+                  <TextField
                     type="number"
-                    min={1}
-                    max={stock || undefined}
-                    className="w-20 rounded border border-gray-300 px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    size="small"
                     value={item.quantidade}
+                    inputProps={{ min: 1, max: stock || undefined, style: { textAlign: 'center' } }}
                     onChange={(e) => onChangeQty(id, Number(e.target.value))}
+                    sx={{ width: 82 }}
                   />
-                </td>
-                <td className="px-4 py-3 text-right font-semibold text-gray-800">
-                  {formatBRL(item.subtotal)}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <button
-                    onClick={() => onRemove(id)}
-                    className="text-red-400 hover:text-red-600 transition-colors"
-                    title="Remover item"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</TableCell>
+                <TableCell align="center">
+                  <IconButton color="error" onClick={() => onRemove(id)} size="small" title="Remover item">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-        <tfoot>
-          <tr className="bg-blue-50 font-semibold">
-            <td colSpan={3} className="px-4 py-3 text-right text-gray-700">
-              TOTAL DO PEDIDO
-            </td>
-            <td className="px-4 py-3 text-right text-xl text-blue-700">
-              {formatBRL(total)}
-            </td>
-            <td />
-          </tr>
-        </tfoot>
-      </table>
-    </div>
+        </TableBody>
+        <TableFooter>
+          <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
+            <TableCell colSpan={3} align="right">
+              <Typography sx={{ fontWeight: 700, color: 'text.secondary' }}>TOTAL DO PEDIDO</Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.15rem' }}>
+                {formatBRL(total)}
+              </Typography>
+            </TableCell>
+            <TableCell />
+          </TableRow>
+        </TableFooter>
+      </Table>
+    </TableContainer>
   );
 }
 
+export default memo(OrderCart);

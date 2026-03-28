@@ -1,6 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
+import {
+  AppBar, Toolbar, Box, Container, Typography, Paper,
+  Chip, Collapse, IconButton, Stack, Button, Divider, Badge, Tooltip,
+} from '@mui/material';
+import {
+  Inventory2 as InventoryIcon,
+  ShoppingCart as ShoppingCartIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  KeyboardArrowUp as ArrowUpIcon,
+  ArticleOutlined as ArticleIcon,
+  MailOutline as MailIcon,
+  DeleteOutline as DeleteIcon,
+} from '@mui/icons-material';
 
 import FileUploader from './components/FileUploader';
 import ProductCatalog from './components/ProductCatalog';
@@ -10,7 +23,8 @@ import OrderDetails from './components/OrderDetails';
 import OrderNote from './components/OrderNote';
 import EmailModal from './components/EmailModal';
 
-import { generateOrderNumber, formatDateBR } from './utils/productMapper';
+import { generateOrderNumber, formatDateBR, formatBRL } from './utils/productMapper';
+import { BRANDING } from './utils/branding';
 import type {
   CatalogState,
   SpreadsheetRow,
@@ -19,8 +33,6 @@ import type {
   ClientInfo,
   SmtpConfig,
 } from './types';
-
-import { ShoppingCart, FileText, Mail, ChevronDown, ChevronUp, Package } from 'lucide-react';
 
 const SMTP_STORAGE_KEY = 'pvs_smtp_config';
 const CATALOG_SESSION_KEY = 'pvs_catalog';
@@ -37,28 +49,33 @@ function loadCatalog(): CatalogState | null {
 }
 
 const DEFAULT_CLIENT: ClientInfo = {
-  razaoSocial: '',
-  cnpj: '',
-  email: '',
-  telefone: '',
-  endereco: '',
+  razaoSocial: '', cnpj: '', email: '', telefone: '', endereco: '',
 };
 
 const DEFAULT_SMTP: SmtpConfig = {
-  serviceId: '',
-  templateId: '',
-  publicKey: '',
-  toEmail: '',
-  fromName: '',
+  serviceId: '', templateId: '', publicKey: '', toEmail: '', fromName: '',
 };
 
 function loadSmtpConfig(): SmtpConfig {
   try {
     const raw = localStorage.getItem(SMTP_STORAGE_KEY);
     return raw ? { ...DEFAULT_SMTP, ...JSON.parse(raw) } : DEFAULT_SMTP;
-  } catch {
-    return DEFAULT_SMTP;
-  }
+  } catch { return DEFAULT_SMTP; }
+}
+
+function StepBadge({ n }: { n: number }) {
+  return (
+    <Box
+      sx={{
+        width: 28, height: 28, borderRadius: '50%',
+        bgcolor: 'primary.main', color: 'white',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, fontSize: 13, flexShrink: 0,
+      }}
+    >
+      {n}
+    </Box>
+  );
 }
 
 export default function App() {
@@ -75,36 +92,38 @@ export default function App() {
   const [showEmail, setShowEmail] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(true);
+  const [logoVisible, setLogoVisible] = useState(true);
 
-  // Persist SMTP config
   useEffect(() => {
     localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify(smtpConfig));
   }, [smtpConfig]);
 
-  // Persist catalog across page reloads (session)
   useEffect(() => {
     if (catalog) saveCatalog(catalog);
     else sessionStorage.removeItem(CATALOG_SESSION_KEY);
   }, [catalog]);
 
-  function handleFileParsed(newCatalog: CatalogState) {
+  const handleFileParsed = useCallback((newCatalog: CatalogState) => {
     setCatalog(newCatalog);
     setCartItems([]);
-  }
+  }, []);
 
-  function handleAddItem(row: SpreadsheetRow, quantity: number) {
+  const handleAddItem = useCallback((row: SpreadsheetRow, quantity: number) => {
     if (!catalog) return;
     const { idCol, nomeCol, precoCol, estoqueCol } = catalog.fieldMapping;
     const id = String(row[idCol] ?? '');
     const stock = Number(row[estoqueCol] ?? 0);
     const price = Number(row[precoCol] ?? 0);
+    let toastType: 'success' | 'error' | null = null;
+    let toastMessage = '';
 
     setCartItems((prev) => {
       const existing = prev.find((i) => String(i.row[idCol] ?? '') === id);
       if (existing) {
         const newQty = existing.quantidade + quantity;
         if (newQty > stock) {
-          toast.error(`Quantidade máxima em estoque: ${stock}`);
+          toastType = 'error';
+          toastMessage = `Quantidade maxima em estoque: ${stock}`;
           return prev;
         }
         return prev.map((i) =>
@@ -113,18 +132,31 @@ export default function App() {
             : i,
         );
       }
-      toast.success(`${String(row[nomeCol] ?? '')} adicionado ao pedido`);
+      toastType = 'success';
+      toastMessage = `${String(row[nomeCol] ?? '')} adicionado ao pedido`;
       return [...prev, { row, quantidade: quantity, subtotal: quantity * price }];
     });
-  }
 
-  function handleRemoveItem(rowId: string) {
+    if (toastType === 'error') toast.error(toastMessage);
+    if (toastType === 'success') toast.success(toastMessage);
+  }, [catalog]);
+
+  const handleUpdateActiveColumns = useCallback((columns: string[]) => {
+    setCatalog((prev) => {
+      if (!prev) return prev;
+      const ordered = prev.allHeaders.filter((h) => columns.includes(h));
+      if (ordered.length === 0) return prev;
+      return { ...prev, activeColumns: ordered };
+    });
+  }, []);
+
+  const handleRemoveItem = useCallback((rowId: string) => {
     if (!catalog) return;
     const { idCol } = catalog.fieldMapping;
     setCartItems((prev) => prev.filter((i) => String(i.row[idCol] ?? '') !== rowId));
-  }
+  }, [catalog]);
 
-  function handleChangeQty(rowId: string, qty: number) {
+  const handleChangeQty = useCallback((rowId: string, qty: number) => {
     if (!catalog || qty <= 0) return;
     const { idCol, estoqueCol, precoCol } = catalog.fieldMapping;
     setCartItems((prev) =>
@@ -136,29 +168,19 @@ export default function App() {
         return { ...i, quantidade: safeQty, subtotal: safeQty * price };
       }),
     );
-  }
+  }, [catalog]);
 
-  function handleOrderDetail(field: string, value: string) {
+  const handleOrderDetail = useCallback((field: string, value: string) => {
     if (field === 'vendedor') setVendedor(value);
     else if (field === 'condicaoPagamento') setCondicaoPagamento(value);
     else if (field === 'prazoEntrega') setPrazoEntrega(value);
     else if (field === 'observacoes') setObservacoes(value);
-  }
+  }, []);
 
   function buildOrder(): Order | null {
-    if (cartItems.length === 0) {
-      toast.error('Adicione ao menos um produto ao pedido.');
-      return null;
-    }
-    if (!client.razaoSocial || !client.cnpj) {
-      toast.error('Preencha os dados obrigatórios do cliente (Razão Social e CNPJ).');
-      return null;
-    }
-    if (!vendedor || !condicaoPagamento || !prazoEntrega) {
-      toast.error('Preencha todos os campos obrigatórios do pedido (Vendedor, Pagamento, Prazo).');
-      return null;
-    }
-
+    if (cartItems.length === 0) { toast.error('Adicione ao menos um produto ao pedido.'); return null; }
+    if (!client.razaoSocial || !client.cnpj) { toast.error('Preencha Razão Social e CNPJ do cliente.'); return null; }
+    if (!vendedor || !condicaoPagamento || !prazoEntrega) { toast.error('Preencha Vendedor, Condição de Pagamento e Prazo de Entrega.'); return null; }
     const now = new Date();
     return {
       numero: generateOrderNumber(),
@@ -194,165 +216,211 @@ export default function App() {
   const hasProducts = catalog !== null;
   const hasItems = cartItems.length > 0;
 
+  function handleClearOrder() {
+    setCartItems([]);
+    setClient(DEFAULT_CLIENT);
+    setVendedor('');
+    setCondicaoPagamento('');
+    setPrazoEntrega('');
+    setObservacoes('');
+    toast('Pedido limpo.', { icon: '🗑️' });
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
 
-      {/* Top navbar */}
-      <header className="bg-blue-700 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Package className="h-7 w-7" />
-            <div>
-              <h1 className="text-xl font-bold leading-tight">Emissão de Pedido de Vendas</h1>
-              <p className="text-xs text-blue-200">Distribuidora Central</p>
-            </div>
-          </div>
+      {/* ─── Top AppBar ─── */}
+      <AppBar position="sticky" elevation={0} sx={{ background: 'linear-gradient(135deg, #0D47A1 0%, #1565C0 60%, #1976D2 100%)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <Toolbar sx={{ maxWidth: 1280, width: '100%', mx: 'auto', px: { xs: 2, sm: 3 } }}>
+          {logoVisible ? (
+            <Box
+              component="img"
+              src={BRANDING.logoPath}
+              alt={BRANDING.logoAlt}
+              onError={() => setLogoVisible(false)}
+              sx={{
+                mr: 1.5,
+                height: { xs: 34, sm: 40 },
+                width: 'auto',
+                borderRadius: 1,
+                bgcolor: 'rgba(255,255,255,0.1)',
+                p: 0.25,
+              }}
+            />
+          ) : (
+            <InventoryIcon sx={{ mr: 1.5, fontSize: 28 }} />
+          )}
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" sx={{ lineHeight: 1.2, color: 'white' }}>
+              Emissão de Pedido de Vendas
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.75, color: 'white' }}>
+              {BRANDING.companyName}
+            </Typography>
+          </Box>
 
           {hasItems && (
-            <div className="flex items-center gap-2 text-sm bg-blue-800 rounded-lg px-4 py-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span>
-                {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} —{' '}
-                <strong>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-              </span>
-            </div>
+            <Tooltip title="Itens no pedido">
+              <Badge badgeContent={cartItems.length} color="secondary" sx={{ mr: 1 }}>
+                <Chip
+                  icon={<ShoppingCartIcon sx={{ fontSize: '16px !important' }} />}
+                  label={formatBRL(total)}
+                  sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 700, '& .MuiChip-icon': { color: 'white' } }}
+                />
+              </Badge>
+            </Tooltip>
           )}
-        </div>
-      </header>
+        </Toolbar>
+      </AppBar>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Step 1: Load file */}
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-white text-sm font-bold">1</span>
-            <h2 className="text-base font-bold text-gray-800">Catálogo de Produtos</h2>
-            <span className="text-xs text-gray-400">(CSV ou XLSX)</span>
-          </div>
-          <FileUploader onLoad={handleFileParsed} />
-        </section>
+      {/* ─── Main content ─── */}
+      <Container maxWidth="xl" sx={{ py: 4, px: { xs: 2, sm: 3 } }}>
+        <Stack spacing={3}>
 
-        {/* Step 2: Select products */}
-        {hasProducts && (
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <button
-              className="w-full flex items-center gap-2 text-left"
-              onClick={() => setCatalogOpen((o) => !o)}
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-white text-sm font-bold">2</span>
-              <h2 className="text-base font-bold text-gray-800 flex-1">Selecionar Produtos</h2>
-              <span className="text-xs text-gray-400">{catalog?.rows.length ?? 0} no catálogo</span>
-              {catalogOpen ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
-            </button>
+          {/* Step 1 — Catálogo */}
+          <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 2.5, sm: 3 } }}>
+            <Stack direction="row" alignItems="center" spacing={1.5} mb={2.5}>
+              <StepBadge n={1} />
+              <Typography variant="subtitle1">Catálogo de Produtos</Typography>
+              <Chip label="CSV ou XLSX" size="small" variant="outlined" sx={{ ml: 0.5 }} />
+            </Stack>
+            <FileUploader onLoad={handleFileParsed} />
+          </Paper>
 
-            {catalogOpen && catalog && (
-              <div className="mt-4">
-                <ProductCatalog catalog={catalog} onAddItem={handleAddItem} />
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Step 3: Cart */}
-        {hasProducts && (
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-white text-sm font-bold">3</span>
-              <h2 className="text-base font-bold text-gray-800">Itens do Pedido</h2>
-              {hasItems && (
-                <span className="ml-auto text-sm font-semibold text-blue-700">
-                  Total: {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
-              )}
-            </div>
-            <OrderCart
-              items={cartItems}
-              fieldMapping={catalog!.fieldMapping}
-              onRemove={handleRemoveItem}
-              onChangeQty={handleChangeQty}
-            />
-          </section>
-        )}
-
-        {/* Step 4: Client + details */}
-        {hasProducts && (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 px-1">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-white text-sm font-bold">4</span>
-              <h2 className="text-base font-bold text-gray-800">Informações do Pedido</h2>
-            </div>
-
-            <ClientForm value={client} onChange={setClient} />
-
-            <OrderDetails
-              vendedor={vendedor}
-              condicaoPagamento={condicaoPagamento}
-              prazoEntrega={prazoEntrega}
-              observacoes={observacoes}
-              onChange={handleOrderDetail}
-            />
-          </section>
-        )}
-
-        {/* Step 5: Actions */}
-        {hasProducts && (
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-white text-sm font-bold">5</span>
-              <h2 className="text-base font-bold text-gray-800">Emitir Pedido</h2>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleEmitNote}
-                className="flex items-center gap-2 rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white hover:bg-blue-800 transition shadow-sm"
+          {/* Step 2 — Selecionar Produtos */}
+          {hasProducts && (
+            <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+              <Box
+                component="button"
+                onClick={() => setCatalogOpen((o) => !o)}
+                sx={{
+                  display: 'flex', alignItems: 'center', width: '100%',
+                  px: { xs: 2.5, sm: 3 }, py: 2, background: 'none',
+                  border: 'none', cursor: 'pointer', textAlign: 'left',
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
               >
-                <FileText className="h-5 w-5" />
-                Gerar Nota do Pedido
-              </button>
+                <StepBadge n={2} />
+                <Typography variant="subtitle1" sx={{ flex: 1, ml: 1.5 }}>Selecionar Produtos</Typography>
+                <Chip label={`${catalog?.rows.length ?? 0} no catálogo`} size="small" color="primary" variant="outlined" sx={{ mr: 1 }} />
+                <IconButton size="small" disableRipple>
+                  {catalogOpen ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                </IconButton>
+              </Box>
+              <Collapse in={catalogOpen}>
+                <Divider />
+                <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                  {catalog && (
+                    <ProductCatalog
+                      catalog={catalog}
+                      onAddItem={handleAddItem}
+                      onActiveColumnsChange={handleUpdateActiveColumns}
+                    />
+                  )}
+                </Box>
+              </Collapse>
+            </Paper>
+          )}
 
-              <button
-                onClick={handleOpenEmail}
-                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-700 transition shadow-sm"
-              >
-                <Mail className="h-5 w-5" />
-                Gerar &amp; Enviar E-mail
-              </button>
+          {/* Step 3 — Carrinho */}
+          {hasProducts && (
+            <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 2.5, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" spacing={1.5} mb={2.5}>
+                <StepBadge n={3} />
+                <Typography variant="subtitle1" sx={{ flex: 1 }}>Itens do Pedido</Typography>
+                {hasItems && (
+                  <Typography variant="subtitle2" color="primary">
+                    Total: {formatBRL(total)}
+                  </Typography>
+                )}
+              </Stack>
+              <OrderCart
+                items={cartItems}
+                fieldMapping={catalog!.fieldMapping}
+                onRemove={handleRemoveItem}
+                onChangeQty={handleChangeQty}
+              />
+            </Paper>
+          )}
 
-              {hasItems && (
-                <button
-                  onClick={() => {
-                    setCartItems([]);
-                    setClient(DEFAULT_CLIENT);
-                    setVendedor('');
-                    setCondicaoPagamento('');
-                    setPrazoEntrega('');
-                    setObservacoes('');
-                    toast('Pedido limpo.', { icon: '🗑️' });
-                  }}
-                  className="flex items-center gap-2 rounded-xl border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+          {/* Step 4 — Informações do Pedido */}
+          {hasProducts && (
+            <Stack spacing={2}>
+              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 0.5 }}>
+                <StepBadge n={4} />
+                <Typography variant="subtitle1">Informações do Pedido</Typography>
+              </Stack>
+              <ClientForm value={client} onChange={setClient} />
+              <OrderDetails
+                vendedor={vendedor}
+                condicaoPagamento={condicaoPagamento}
+                prazoEntrega={prazoEntrega}
+                observacoes={observacoes}
+                onChange={handleOrderDetail}
+              />
+            </Stack>
+          )}
+
+          {/* Step 5 — Emitir */}
+          {hasProducts && (
+            <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 2.5, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" spacing={1.5} mb={3}>
+                <StepBadge n={5} />
+                <Typography variant="subtitle1">Emitir Pedido</Typography>
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} flexWrap="wrap">
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<ArticleIcon />}
+                  onClick={handleEmitNote}
+                  sx={{ bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
                 >
-                  Limpar Pedido
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-      </main>
+                  Gerar Nota do Pedido
+                </Button>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<MailIcon />}
+                  onClick={handleOpenEmail}
+                  color="secondary"
+                >
+                  Gerar &amp; Enviar E-mail
+                </Button>
+                {hasItems && (
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    startIcon={<DeleteIcon />}
+                    onClick={handleClearOrder}
+                    color="error"
+                  >
+                    Limpar Pedido
+                  </Button>
+                )}
+              </Stack>
+            </Paper>
+          )}
+        </Stack>
+      </Container>
 
-      {/* Modals */}
       {showNote && currentOrder && (
-        <OrderNote order={currentOrder} onClose={() => setShowNote(false)} />
+        <OrderNote
+          order={currentOrder}
+          branding={BRANDING}
+          onClose={() => setShowNote(false)}
+        />
       )}
-
       {showEmail && currentOrder && (
         <EmailModal
           order={currentOrder}
+          branding={BRANDING}
           smtpConfig={smtpConfig}
           onConfigChange={setSmtpConfig}
           onClose={() => setShowEmail(false)}
         />
       )}
-    </div>
+    </Box>
   );
 }

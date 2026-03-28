@@ -1,14 +1,38 @@
 import { useRef } from 'react';
-import type { Order } from '../types';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  IconButton,
+} from '@mui/material';
+import {
+  Print as PrintIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
+
+import type { BrandingConfig, Order } from '../types';
 import { formatBRL } from '../utils/productMapper';
-import { Printer, X } from 'lucide-react';
+import { getAbsoluteAssetUrl } from '../utils/branding';
 
 interface Props {
   order: Order;
+  branding: BrandingConfig;
   onClose: () => void;
 }
 
-export default function OrderNote({ order, onClose }: Props) {
+export default function OrderNote({ order, branding, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
 
   function handlePrint() {
@@ -29,12 +53,18 @@ export default function OrderNote({ order, onClose }: Props) {
           th{background:#f3f4f6;font-weight:600;text-align:left}
           .right{text-align:right} .center{text-align:center}
           .total-row td{background:#eff6ff;font-weight:700}
-          .badge{background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:9999px;font-size:11px}
-          .footer{margin-top:32px;font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:12px}
           .obs{background:#fffbeb;border-left:4px solid #f59e0b;padding:8px 12px;margin-top:12px;font-size:12px}
+          .print-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+          .print-logo{height:44px;max-width:180px;object-fit:contain}
           @media print{body{padding:16px}}
         </style>
-      </head><body>${content}</body></html>
+      </head><body>
+      <div class="print-header">
+        <img class="print-logo" src="${getAbsoluteAssetUrl(branding.logoPath)}" alt="${branding.logoAlt}" onerror="this.style.display='none'" />
+        <div style="font-weight:700;color:#1e3a8a">${branding.companyName}</div>
+      </div>
+      ${content}
+      </body></html>
     `);
     win.document.close();
     win.focus();
@@ -42,113 +72,99 @@ export default function OrderNote({ order, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        {/* Modal header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-bold text-gray-800">Nota do Pedido</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition"
-            >
-              <Printer className="h-4 w-4" /> Imprimir / PDF
-            </button>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 transition">
-              <X className="h-5 w-5 text-gray-500" />
-            </button>
-          </div>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>Nota do Pedido</Typography>
+          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        </Stack>
+      </DialogTitle>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto p-6" ref={printRef}>
-          {/* Order header */}
-          <div className="mb-6 rounded-lg bg-blue-700 px-6 py-5 text-white">
-            <h1 className="text-xl font-bold">Pedido de Vendas Nº {order.numero}</h1>
-            <p className="mt-1 text-sm opacity-85">
-              Emitido em {order.data} às {order.hora} — Vendedor: {order.vendedor}
-            </p>
-          </div>
+      <DialogContent dividers ref={printRef}>
+        <Paper sx={{ mb: 2.2, p: 2.4, background: 'linear-gradient(120deg,#1565C0,#1976D2)', color: 'white' }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>Pedido de Vendas No {order.numero}</Typography>
+          <Typography variant="body2" sx={{ opacity: 0.88 }}>
+            Emitido em {order.data} as {order.hora} - Vendedor: {order.vendedor}
+          </Typography>
+        </Paper>
 
-          {/* Client */}
-          <h2 className="text-sm font-bold text-blue-800 border-b border-gray-200 pb-1 mb-3">Dados do Cliente</h2>
-          <table className="w-full text-sm mb-6">
-            <tbody>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Dados do Cliente</Typography>
+        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+          <Table size="small">
+            <TableBody>
               {[
-                ['Razão Social', order.cliente.razaoSocial],
+                ['Razao Social', order.cliente.razaoSocial],
                 ['CNPJ', order.cliente.cnpj],
                 ['E-mail', order.cliente.email],
                 ['Telefone', order.cliente.telefone],
-                ['Endereço', order.cliente.endereco],
+                ['Endereco', order.cliente.endereco],
               ].map(([k, v]) => (
-                <tr key={k} className="border-b border-gray-100">
-                  <td className="py-2 pr-4 font-medium text-gray-500 w-36">{k}</td>
-                  <td className="py-2 text-gray-800">{v || '—'}</td>
-                </tr>
+                <TableRow key={k}>
+                  <TableCell sx={{ width: 180, fontWeight: 700, color: 'text.secondary' }}>{k}</TableCell>
+                  <TableCell>{v || '—'}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-          {/* Items */}
-          <h2 className="text-sm font-bold text-blue-800 border-b border-gray-200 pb-1 mb-3">Itens do Pedido</h2>
-          <table className="w-full text-sm mb-4">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 border border-gray-200 text-left">Cód.</th>
-                <th className="px-3 py-2 border border-gray-200 text-left">Produto</th>
-                <th className="px-3 py-2 border border-gray-200 text-center">Qtd</th>
-                <th className="px-3 py-2 border border-gray-200 text-right">Vlr Unit.</th>
-                <th className="px-3 py-2 border border-gray-200 text-right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.itens.map((item, i) => {
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Itens do Pedido</Typography>
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Cod.</TableCell>
+                <TableCell>Produto</TableCell>
+                <TableCell align="center">Qtd</TableCell>
+                <TableCell align="right">Vlr Unit.</TableCell>
+                <TableCell align="right">Subtotal</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {order.itens.map((item) => {
                 const { idCol, nomeCol, precoCol } = order.fieldMapping;
-                const id   = String(item.row[idCol]   ?? '');
+                const id = String(item.row[idCol] ?? '');
                 const nome = String(item.row[nomeCol] ?? '');
                 const price = Number(item.row[precoCol] ?? 0);
                 return (
-                  <tr key={id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-3 py-2 border border-gray-200 font-mono text-xs text-gray-500">{id}</td>
-                    <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">{nome}</td>
-                    <td className="px-3 py-2 border border-gray-200 text-center">{item.quantidade}</td>
-                    <td className="px-3 py-2 border border-gray-200 text-right text-gray-600">{formatBRL(price)}</td>
-                    <td className="px-3 py-2 border border-gray-200 text-right font-semibold text-gray-800">{formatBRL(item.subtotal)}</td>
-                  </tr>
+                  <TableRow key={id}>
+                    <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{id}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{nome}</TableCell>
+                    <TableCell align="center">{item.quantidade}</TableCell>
+                    <TableCell align="right">{formatBRL(price)}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-blue-50 font-bold">
-                <td colSpan={4} className="px-3 py-3 border border-gray-200 text-right text-gray-700">TOTAL DO PEDIDO</td>
-                <td className="px-3 py-3 border border-gray-200 text-right text-blue-700 text-lg">{formatBRL(order.total)}</td>
-              </tr>
-            </tfoot>
-          </table>
+              <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
+                <TableCell colSpan={4} align="right" sx={{ fontWeight: 800 }}>TOTAL DO PEDIDO</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main' }}>{formatBRL(order.total)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-          {/* Conditions */}
-          <div className="flex flex-wrap gap-4 text-sm mt-4">
-            <div>
-              <span className="text-gray-500">Condição de Pagamento: </span>
-              <strong>{order.condicaoPagamento}</strong>
-            </div>
-            <div>
-              <span className="text-gray-500">Prazo de Entrega: </span>
-              <strong>{order.prazoEntrega}</strong>
-            </div>
-          </div>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 2 }}>
+          <Typography variant="body2"><strong>Condicao de Pagamento:</strong> {order.condicaoPagamento}</Typography>
+          <Typography variant="body2"><strong>Prazo de Entrega:</strong> {order.prazoEntrega}</Typography>
+        </Stack>
 
-          {order.observacoes && (
-            <div className="mt-4 rounded-lg border-l-4 border-amber-400 bg-amber-50 px-4 py-3 text-sm">
-              <strong>Observações:</strong> {order.observacoes}
-            </div>
-          )}
+        {order.observacoes && (
+          <Paper variant="outlined" sx={{ mt: 2, p: 1.5, borderLeft: '4px solid', borderColor: 'warning.main', bgcolor: 'warning.50' }}>
+            <Typography variant="body2"><strong>Observacoes:</strong> {order.observacoes}</Typography>
+          </Paper>
+        )}
 
-          <div className="mt-8 border-t border-gray-200 pt-4 text-xs text-gray-400 text-center">
-            Documento gerado eletronicamente — {order.data} às {order.hora}
-          </div>
-        </div>
-      </div>
-    </div>
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="caption" color="text.secondary">
+          Documento gerado eletronicamente - {order.data} as {order.hora}
+        </Typography>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 2.5, py: 1.5 }}>
+        <Button onClick={onClose} variant="outlined" color="inherit">Fechar</Button>
+        <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>Imprimir / PDF</Button>
+      </DialogActions>
+    </Dialog>
   );
 }

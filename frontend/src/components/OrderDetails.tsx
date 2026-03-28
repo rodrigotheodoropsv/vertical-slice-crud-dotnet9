@@ -1,4 +1,13 @@
-import { ClipboardList } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  Grid,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { AssignmentOutlined as DetailsIcon } from '@mui/icons-material';
 
 interface Props {
   vendedor: string;
@@ -9,108 +18,93 @@ interface Props {
 }
 
 const PAYMENT_OPTIONS = [
-  'À vista',
+  'A vista',
   'Boleto 30 dias',
   'Boleto 30/60 dias',
   'Boleto 30/60/90 dias',
-  'Cartão de crédito à vista',
-  'Cartão de crédito 3x sem juros',
+  'Cartao de credito a vista',
+  'Cartao de credito 3x sem juros',
   'Pix',
-  'Transferência bancária',
+  'Transferencia bancaria',
 ];
 
 const DELIVERY_OPTIONS = [
   'Imediato',
-  '1-3 dias úteis',
-  '5 dias úteis',
-  '7 dias úteis',
-  '10 dias úteis',
-  '15 dias úteis',
+  '1-3 dias uteis',
+  '5 dias uteis',
+  '7 dias uteis',
+  '10 dias uteis',
+  '15 dias uteis',
   '30 dias',
   'A combinar',
 ];
 
-function Select({
-  label,
-  options,
-  value,
-  onChange,
-  required,
-}: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <select
-        required={required}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">Selecione…</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-}
-
 export default function OrderDetails({ vendedor, condicaoPagamento, prazoEntrega, observacoes, onChange }: Props) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-      <div className="flex items-center gap-2 mb-1">
-        <ClipboardList className="h-5 w-5 text-blue-700" />
-        <h3 className="font-semibold text-gray-800">Detalhes do Pedido</h3>
-      </div>
+    <Card variant="outlined" sx={{ borderRadius: 2.5 }}>
+      <CardContent sx={{ p: { xs: 2.2, sm: 2.8 } }}>
+        <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+          <DetailsIcon color="primary" fontSize="small" />
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Detalhes do Pedido</Typography>
+        </Stack>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">
-            Vendedor <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            required
-            placeholder="Nome do vendedor"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={vendedor}
-            onChange={(e) => onChange('vendedor', e.target.value)}
-          />
-        </div>
+        <Grid container spacing={1.5}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              required
+              label="Vendedor"
+              placeholder="Nome do vendedor"
+              value={vendedor}
+              onChange={(e) => onChange('vendedor', e.target.value)}
+            />
+          </Grid>
 
-        <Select
-          label="Condição de Pagamento"
-          required
-          options={PAYMENT_OPTIONS}
-          value={condicaoPagamento}
-          onChange={(v) => onChange('condicaoPagamento', v)}
-        />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              select
+              fullWidth
+              required
+              label="Condicao de Pagamento"
+              value={condicaoPagamento}
+              onChange={(e) => onChange('condicaoPagamento', e.target.value)}
+            >
+              <MenuItem value="">Selecione...</MenuItem>
+              {PAYMENT_OPTIONS.map((o) => (
+                <MenuItem key={o} value={o}>{o}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
 
-        <Select
-          label="Prazo de Entrega"
-          required
-          options={DELIVERY_OPTIONS}
-          value={prazoEntrega}
-          onChange={(v) => onChange('prazoEntrega', v)}
-        />
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              select
+              fullWidth
+              required
+              label="Prazo de Entrega"
+              value={prazoEntrega}
+              onChange={(e) => onChange('prazoEntrega', e.target.value)}
+            >
+              <MenuItem value="">Selecione...</MenuItem>
+              {DELIVERY_OPTIONS.map((o) => (
+                <MenuItem key={o} value={o}>{o}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
 
-        <div className="sm:col-span-3">
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Observações</label>
-          <textarea
-            rows={3}
-            placeholder="Instruções especiais de entrega, referência de produto, etc."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            value={observacoes}
-            onChange={(e) => onChange('observacoes', e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Observacoes"
+              multiline
+              minRows={3}
+              placeholder="Instrucoes especiais de entrega, referencia de produto, etc."
+              value={observacoes}
+              onChange={(e) => onChange('observacoes', e.target.value)}
+            />
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
   );
 }

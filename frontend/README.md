@@ -45,6 +45,22 @@ Campos do catálogo de exemplo:
 
 > Você pode usar sua própria planilha — basta fazer upload e mapear as colunas nas telas de configuração.
 
+## 🖼️ Logo personalizada da empresa
+
+Você pode colocar o logo da sua empresa em:
+
+- `frontend/public/branding/company-logo.png`
+
+Esse arquivo é usado automaticamente em:
+
+- Header da aplicação
+- Nota do pedido (visualização e impressão/PDF)
+- Template HTML de e-mail
+
+Se quiser alterar nome da empresa ou caminho do logo padrão, ajuste:
+
+- `frontend/src/utils/branding.ts`
+
 ## ✉️ Configuração de envio de e-mail
 
 O envio utiliza o [EmailJS](https://www.emailjs.com) (gratuito para até 200 e-mails/mês):

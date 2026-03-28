@@ -1,5 +1,6 @@
-import type { Order } from '../types';
+import type { BrandingConfig, Order } from '../types';
 import { formatBRL } from './productMapper';
+import { getAbsoluteAssetUrl } from './branding';
 
 /** Build the full plain-text body for the order email. */
 export function buildEmailBody(order: Order): string {
@@ -49,7 +50,7 @@ ${order.vendedor}
 }
 
 /** Build an HTML email body for richer clients. */
-export function buildEmailHtml(order: Order): string {
+export function buildEmailHtml(order: Order, branding: BrandingConfig): string {
   const { idCol, nomeCol, precoCol } = order.fieldMapping;
   const rows = order.itens
     .map(
@@ -70,6 +71,10 @@ export function buildEmailHtml(order: Order): string {
 <head><meta charset="UTF-8"><title>Pedido ${order.numero}</title></head>
 <body style="font-family:Arial,sans-serif;color:#111827;max-width:720px;margin:auto;padding:24px">
   <div style="background:#1e40af;color:#fff;padding:20px 28px;border-radius:8px 8px 0 0">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <img src="${getAbsoluteAssetUrl(branding.logoPath)}" alt="${branding.logoAlt}" onerror="this.style.display='none'" style="height:38px;max-width:180px;object-fit:contain;background:rgba(255,255,255,.15);padding:2px;border-radius:4px" />
+      <strong style="font-size:14px">${branding.companyName}</strong>
+    </div>
     <h1 style="margin:0;font-size:20px">Pedido de Vendas Nº ${order.numero}</h1>
     <p style="margin:4px 0 0;opacity:.85;font-size:13px">Emitido em ${order.data} às ${order.hora} por ${order.vendedor}</p>
   </div>

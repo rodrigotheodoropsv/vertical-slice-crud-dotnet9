@@ -1,41 +1,11 @@
+import { Card, CardContent, Grid, Stack, TextField, Typography } from '@mui/material';
+import { PersonOutline as UserIcon } from '@mui/icons-material';
+
 import type { ClientInfo } from '../types';
-import { User } from 'lucide-react';
 
 interface Props {
   value: ClientInfo;
   onChange: (v: ClientInfo) => void;
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  required,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        required={required}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
 }
 
 function formatCnpj(raw: string) {
@@ -49,9 +19,7 @@ function formatCnpj(raw: string) {
 
 function formatPhone(raw: string) {
   const digits = raw.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 10) {
-    return digits.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
-  }
+  if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
   return digits.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
 }
 
@@ -61,56 +29,69 @@ export default function ClientForm({ value, onChange }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-      <div className="flex items-center gap-2 mb-1">
-        <User className="h-5 w-5 text-blue-700" />
-        <h3 className="font-semibold text-gray-800">Dados do Cliente</h3>
-      </div>
+    <Card variant="outlined" sx={{ borderRadius: 2.5 }}>
+      <CardContent sx={{ p: { xs: 2.2, sm: 2.8 } }}>
+        <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+          <UserIcon color="primary" fontSize="small" />
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Dados do Cliente</Typography>
+        </Stack>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Field
-            label="Razão Social"
-            required
-            placeholder="Ex.: Comércio Silva Ltda."
-            value={value.razaoSocial}
-            onChange={(v) => set('razaoSocial', v)}
-          />
-        </div>
+        <Grid container spacing={1.5}>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              required
+              label="Razao Social"
+              placeholder="Ex.: Comercio Silva Ltda."
+              value={value.razaoSocial}
+              onChange={(e) => set('razaoSocial', e.target.value)}
+            />
+          </Grid>
 
-        <Field
-          label="CNPJ"
-          required
-          placeholder="00.000.000/0000-00"
-          value={value.cnpj}
-          onChange={(v) => set('cnpj', formatCnpj(v))}
-        />
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              required
+              label="CNPJ"
+              placeholder="00.000.000/0000-00"
+              value={value.cnpj}
+              onChange={(e) => set('cnpj', formatCnpj(e.target.value))}
+            />
+          </Grid>
 
-        <Field
-          label="E-mail"
-          type="email"
-          required
-          placeholder="contato@empresa.com.br"
-          value={value.email}
-          onChange={(v) => set('email', v)}
-        />
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              required
+              type="email"
+              label="E-mail"
+              placeholder="contato@empresa.com.br"
+              value={value.email}
+              onChange={(e) => set('email', e.target.value)}
+            />
+          </Grid>
 
-        <Field
-          label="Telefone"
-          placeholder="(11) 91234-5678"
-          value={value.telefone}
-          onChange={(v) => set('telefone', formatPhone(v))}
-        />
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              label="Telefone"
+              placeholder="(11) 91234-5678"
+              value={value.telefone}
+              onChange={(e) => set('telefone', formatPhone(e.target.value))}
+            />
+          </Grid>
 
-        <div className="sm:col-span-2">
-          <Field
-            label="Endereço de Entrega"
-            placeholder="Rua, nº – Bairro – Cidade/UF – CEP"
-            value={value.endereco}
-            onChange={(v) => set('endereco', v)}
-          />
-        </div>
-      </div>
-    </div>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              label="Endereco de Entrega"
+              placeholder="Rua, numero - Bairro - Cidade/UF - CEP"
+              value={value.endereco}
+              onChange={(e) => set('endereco', e.target.value)}
+            />
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
   );
 }

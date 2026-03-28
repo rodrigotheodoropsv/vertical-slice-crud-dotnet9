@@ -1,36 +1,61 @@
 import { useState } from 'react';
-import type { Order, SmtpConfig } from '../types';
-import { buildEmailBody, buildEmailHtml } from '../utils/emailBuilder';
-import { Mail, Send, Copy, Check, ExternalLink } from 'lucide-react';
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Link,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  ContentCopy as CopyIcon,
+  Check as CheckIcon,
+  OpenInNew as OpenIcon,
+  Send as SendIcon,
+  MailOutline as MailIcon,
+} from '@mui/icons-material';
 import emailjs from '@emailjs/browser';
 import toast from 'react-hot-toast';
 
+import type { BrandingConfig, Order, SmtpConfig } from '../types';
+import { buildEmailBody, buildEmailHtml } from '../utils/emailBuilder';
+
 interface Props {
   order: Order;
+  branding: BrandingConfig;
   smtpConfig: SmtpConfig;
   onConfigChange: (config: SmtpConfig) => void;
   onClose: () => void;
 }
 
-type Tab = 'preview' | 'html' | 'config';
+type TabValue = 'preview' | 'html' | 'config';
 
-export default function EmailModal({ order, smtpConfig: initialConfig, onConfigChange, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>('preview');
+export default function EmailModal({ order, branding, smtpConfig: initialConfig, onConfigChange, onClose }: Props) {
+  const [tab, setTab] = useState<TabValue>('preview');
   const [config, setConfig] = useState<SmtpConfig>(initialConfig);
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const plainBody = buildEmailBody(order);
-  const htmlBody = buildEmailHtml(order);
-
-  const subject = `Pedido de Vendas Nº ${order.numero} — ${order.cliente.razaoSocial}`;
+  const htmlBody = buildEmailHtml(order, branding);
+  const subject = `Pedido de Vendas No ${order.numero} - ${order.cliente.razaoSocial}`;
 
   async function handleSendEmailJs() {
     if (!config.serviceId || !config.templateId || !config.publicKey) {
-      toast.error('Preencha as configurações do EmailJS antes de enviar.');
+      toast.error('Preencha as configuracoes do EmailJS antes de enviar.');
       setTab('config');
       return;
     }
+
     setSending(true);
     try {
       await emailjs.send(
@@ -66,7 +91,7 @@ export default function EmailModal({ order, smtpConfig: initialConfig, onConfigC
   function handleCopy() {
     navigator.clipboard.writeText(tab === 'html' ? htmlBody : plainBody).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1800);
     });
   }
 
@@ -77,128 +102,114 @@ export default function EmailModal({ order, smtpConfig: initialConfig, onConfigC
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5 text-blue-700" />
-            <h2 className="text-lg font-bold text-gray-800">Template de E-mail</h2>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 transition text-gray-500 text-xl font-bold leading-none">×</button>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <MailIcon color="primary" />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Template de E-mail</Typography>
+          </Stack>
+          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        </Stack>
+      </DialogTitle>
 
-        {/* Tabs */}
-        <div className="flex border-b bg-gray-50 px-6">
-          {(['preview', 'html', 'config'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t === 'preview' ? 'Texto' : t === 'html' ? 'HTML' : 'Configurações'}
-            </button>
-          ))}
-        </div>
+      <Box sx={{ px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+          <Tab value="preview" label="Texto" />
+          <Tab value="html" label="HTML" />
+          <Tab value="config" label="Configuracoes" />
+        </Tabs>
+      </Box>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Email meta */}
-          {tab !== 'config' && (
-            <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm space-y-1">
-              <div><span className="text-gray-500 w-16 inline-block">Para:</span> <strong>{config.toEmail || order.cliente.email || '—'}</strong></div>
-              <div><span className="text-gray-500 w-16 inline-block">Assunto:</span> {subject}</div>
-            </div>
-          )}
+      <DialogContent sx={{ pt: 2.2 }}>
+        {tab !== 'config' && (
+          <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+            <Typography variant="body2"><strong>Para:</strong> {config.toEmail || order.cliente.email || '—'}</Typography>
+            <Typography variant="body2"><strong>Assunto:</strong> {subject}</Typography>
+          </Alert>
+        )}
 
-          {tab === 'preview' && (
-            <pre className="whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700 font-mono leading-relaxed">
-              {plainBody}
-            </pre>
-          )}
-
-          {tab === 'html' && (
-            <iframe
-              srcDoc={htmlBody}
-              title="Email HTML preview"
-              className="w-full rounded-lg border border-gray-200"
-              style={{ height: '420px' }}
-              sandbox="allow-same-origin"
-            />
-          )}
-
-          {tab === 'config' && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                <strong>Como funciona:</strong> O envio usa o{' '}
-                <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="underline inline-flex items-center gap-1">
-                  EmailJS <ExternalLink className="h-3 w-3" />
-                </a>{' '}
-                (gratuito para até 200 e-mails/mês). Crie uma conta, configure seu serviço de e-mail (Gmail, Outlook, etc.) e cole as chaves abaixo.
-              </div>
-
-              {[
-                { key: 'serviceId' as keyof SmtpConfig, label: 'Service ID', placeholder: 'service_xxxxxxx' },
-                { key: 'templateId' as keyof SmtpConfig, label: 'Template ID', placeholder: 'template_xxxxxxx' },
-                { key: 'publicKey' as keyof SmtpConfig, label: 'Public Key', placeholder: 'your_public_key' },
-                { key: 'fromName' as keyof SmtpConfig, label: 'Nome do Remetente', placeholder: 'Equipe Comercial' },
-                { key: 'toEmail' as keyof SmtpConfig, label: 'Destinatário (padrão)', placeholder: order.cliente.email || 'cliente@empresa.com' },
-              ].map(({ key, label, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
-                  <input
-                    type="text"
-                    placeholder={placeholder}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={config[key]}
-                    onChange={(e) => setField(key, e.target.value)}
-                  />
-                </div>
-              ))}
-
-              <p className="text-xs text-gray-500">
-                * As configurações são salvas localmente no navegador (localStorage).
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4 bg-gray-50">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition"
+        {tab === 'preview' && (
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'grey.50',
+              fontFamily: 'monospace',
+              fontSize: 12,
+              lineHeight: 1.55,
+              whiteSpace: 'pre-wrap',
+            }}
           >
-            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copiado!' : 'Copiar texto'}
-          </button>
+            {plainBody}
+          </Box>
+        )}
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleMailto}
-              className="flex items-center gap-2 rounded-lg border border-blue-300 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 transition"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Abrir no cliente de e-mail
-            </button>
+        {tab === 'html' && (
+          <Box
+            component="iframe"
+            title="Email HTML preview"
+            srcDoc={htmlBody}
+            sx={{ width: '100%', borderRadius: 2, border: '1px solid', borderColor: 'divider', height: 460 }}
+          />
+        )}
 
-            <button
-              onClick={handleSendEmailJs}
-              disabled={sending}
-              className="flex items-center gap-2 rounded-lg bg-blue-700 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60 transition"
-            >
-              {sending ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              {sending ? 'Enviando…' : 'Enviar via EmailJS'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        {tab === 'config' && (
+          <Stack spacing={1.5}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              O envio usa o EmailJS. Configure seu servico e copie as chaves abaixo.
+              <Link href="https://www.emailjs.com" target="_blank" rel="noreferrer" sx={{ ml: 0.5 }}>
+                Abrir EmailJS
+              </Link>
+            </Alert>
+
+            {[
+              { key: 'serviceId' as keyof SmtpConfig, label: 'Service ID', placeholder: 'service_xxxxxxx' },
+              { key: 'templateId' as keyof SmtpConfig, label: 'Template ID', placeholder: 'template_xxxxxxx' },
+              { key: 'publicKey' as keyof SmtpConfig, label: 'Public Key', placeholder: 'your_public_key' },
+              { key: 'fromName' as keyof SmtpConfig, label: 'Nome do Remetente', placeholder: 'Equipe Comercial' },
+              { key: 'toEmail' as keyof SmtpConfig, label: 'Destinatario (padrao)', placeholder: order.cliente.email || 'cliente@empresa.com' },
+            ].map(({ key, label, placeholder }) => (
+              <TextField
+                key={key}
+                fullWidth
+                label={label}
+                placeholder={placeholder}
+                value={config[key]}
+                onChange={(e) => setField(key, e.target.value)}
+              />
+            ))}
+
+            <Typography variant="caption" color="text.secondary">
+              As configuracoes sao salvas localmente no navegador (localStorage).
+            </Typography>
+          </Stack>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 2.5, py: 1.5, justifyContent: 'space-between' }}>
+        <Button
+          onClick={handleCopy}
+          variant="outlined"
+          color="inherit"
+          startIcon={copied ? <CheckIcon color="success" /> : <CopyIcon />}
+        >
+          {copied ? 'Copiado!' : 'Copiar texto'}
+        </Button>
+
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Button onClick={handleMailto} variant="outlined" startIcon={<OpenIcon />}>
+            Abrir no cliente de e-mail
+          </Button>
+          <Button onClick={handleSendEmailJs} variant="contained" startIcon={<SendIcon />} disabled={sending}>
+            {sending ? 'Enviando...' : 'Enviar via EmailJS'}
+          </Button>
+        </Stack>
+      </DialogActions>
+    </Dialog>
   );
 }
