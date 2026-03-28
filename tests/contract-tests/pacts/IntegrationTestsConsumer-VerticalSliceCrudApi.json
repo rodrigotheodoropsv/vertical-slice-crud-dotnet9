@@ -1,0 +1,683 @@
+{
+  "consumer": {
+    "name": "IntegrationTestsConsumer"
+  },
+  "provider": {
+    "name": "VerticalSliceCrudApi"
+  },
+  "interactions": [
+    {
+      "description": "get all products \u2014 200 OK empty catalogue",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/products"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "items": [],
+          "totalCount": 0
+        },
+        "matchingRules": {
+          "body": {
+            "$.items": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 0
+                }
+              ]
+            },
+            "$.totalCount": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "create product \u2014 400 Bad Request empty name",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/products",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "name": "",
+          "description": "desc",
+          "price": 5,
+          "stock": 1
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+          "title": "Validation Error",
+          "status": 400,
+          "detail": "Nome \u00E9 obrigat\u00F3rio."
+        },
+        "matchingRules": {
+          "body": {
+            "$.type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.detail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "create product \u2014 201 Created",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/products",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "name": "Widget Pro",
+          "description": "A professional widget",
+          "price": 29.99,
+          "stock": 100
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "id": "8fa54dbd-5526-4aba-a394-55db71627565",
+          "name": "Widget Pro",
+          "description": "A professional widget",
+          "price": 29.99,
+          "stock": 100,
+          "createdAt": "2026-03-28T03:25:22.6747876Z"
+        },
+        "matchingRules": {
+          "body": {
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.description": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.stock": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "datetime",
+                  "format": "yyyy-MM-dd\u0027T\u0027HH:mm:ss.SSSSSSS\u0027Z\u0027"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "get all products \u2014 200 OK with items",
+      "providerStates": [
+        {
+          "name": "a product exists"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/products"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "items": [
+            {
+              "id": "8fa54dbd-5526-4aba-a394-55db71627565",
+              "name": "Widget Pro",
+              "price": 29.99,
+              "stock": 100
+            }
+          ],
+          "totalCount": 1
+        },
+        "matchingRules": {
+          "body": {
+            "$.items": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 0
+                }
+              ]
+            },
+            "$.items[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.items[*].name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.items[*].price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.items[*].stock": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.totalCount": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "get product by id \u2014 200 OK",
+      "providerStates": [
+        {
+          "name": "a product exists"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/products/8fa54dbd-5526-4aba-a394-55db71627565"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "id": "8fa54dbd-5526-4aba-a394-55db71627565",
+          "name": "Widget Pro",
+          "description": "A professional widget",
+          "price": 29.99,
+          "stock": 100,
+          "createdAt": "2026-03-28T03:25:22.6747876Z",
+          "updatedAt": "2026-03-28T03:25:22.6747876Z"
+        },
+        "matchingRules": {
+          "body": {
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.description": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.stock": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "datetime",
+                  "format": "yyyy-MM-dd\u0027T\u0027HH:mm:ss.SSSSSSS\u0027Z\u0027"
+                }
+              ]
+            },
+            "$.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "datetime",
+                  "format": "yyyy-MM-dd\u0027T\u0027HH:mm:ss.SSSSSSS\u0027Z\u0027"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "get product by id \u2014 404 Not Found",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/products/b26bfac3-4c65-4472-901b-d43542a98b8d"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+          "title": "Not Found",
+          "status": 404,
+          "detail": "Produto com ID \u0027b26bfac3-4c65-4472-901b-d43542a98b8d\u0027 n\u00E3o encontrado."
+        },
+        "matchingRules": {
+          "body": {
+            "$.type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.detail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "update product \u2014 200 OK",
+      "providerStates": [
+        {
+          "name": "a product exists"
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "path": "/api/products/8fa54dbd-5526-4aba-a394-55db71627565",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "name": "Updated Widget",
+          "description": "Updated description",
+          "price": 49.99,
+          "stock": 200
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "id": "8fa54dbd-5526-4aba-a394-55db71627565",
+          "name": "Updated Widget",
+          "description": "Updated description",
+          "price": 49.99,
+          "stock": 200,
+          "updatedAt": "2026-03-28T03:25:22.7169319Z"
+        },
+        "matchingRules": {
+          "body": {
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.description": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.stock": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "datetime",
+                  "format": "yyyy-MM-dd\u0027T\u0027HH:mm:ss.SSSSSSS\u0027Z\u0027"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "update product \u2014 404 Not Found",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "path": "/api/products/4e665221-9d7e-402f-8e49-7ae1add068af",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "name": "Name",
+          "description": null,
+          "price": 1.0,
+          "stock": 1
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+          "title": "Not Found",
+          "status": 404,
+          "detail": "Produto com ID \u00274e665221-9d7e-402f-8e49-7ae1add068af\u0027 n\u00E3o encontrado."
+        },
+        "matchingRules": {
+          "body": {
+            "$.type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.detail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "delete product \u2014 204 No Content",
+      "providerStates": [
+        {
+          "name": "a product exists"
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/api/products/080019a8-ad93-4f72-85d9-fd1ea8bed9ec"
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "description": "delete product \u2014 404 Not Found",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/api/products/eab41814-b4a9-4e20-8f78-b1a831bd7dcb"
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+          "title": "Not Found",
+          "status": 404,
+          "detail": "Produto com ID \u0027eab41814-b4a9-4e20-8f78-b1a831bd7dcb\u0027 n\u00E3o encontrado."
+        },
+        "matchingRules": {
+          "body": {
+            "$.type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.detail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    },
+    "generatedBy": "VerticalSliceCrud.IntegrationTests.PactRecording"
+  }
+}
