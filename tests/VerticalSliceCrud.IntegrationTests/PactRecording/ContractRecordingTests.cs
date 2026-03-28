@@ -19,6 +19,13 @@ namespace VerticalSliceCrud.IntegrationTests.PactRecording;
 ///   <item>the in-memory database state is deterministic across scenarios.</item>
 /// </list>
 ///
+/// Covered interactions (11 total):
+///   GET  /api/products       → 200 (empty), 200 (with items)
+///   POST /api/products       → 201, 400
+///   GET  /api/products/{id}  → 200, 404
+///   PUT  /api/products/{id}  → 200, 400, 404
+///   DELETE /api/products/{id}→ 204, 404
+///
 /// Output file:
 ///   tests/contract-tests/pacts/IntegrationTestsConsumer-VerticalSliceCrudApi.json
 ///
@@ -104,7 +111,16 @@ public sealed class ContractRecordingTests : IClassFixture<ApiWebApplicationFact
         Assert.NotNull(updated);
         Assert.Equal("Updated Widget", updated.Name);
 
-        // ── 8. PUT /api/products/{id} — 404 Not Found ────────────────────────
+        // ── 8. PUT /api/products/{id} — 400 Bad Request (empty name) ─────────
+        _handler.SetNext("update product — 400 Bad Request empty name", "no products exist");
+        var update400Resp = await _client.PutAsJsonAsync($"/api/products/{Guid.NewGuid()}",
+            new UpdateProductRequest("", null, 1.0m, 1));
+        Assert.Equal(HttpStatusCode.BadRequest, update400Resp.StatusCode);
+        var error400Put = await update400Resp.Content.ReadFromJsonAsync<ApiError>();
+        Assert.NotNull(error400Put);
+        Assert.Equal(400, error400Put.Status);
+
+        // ── 9. PUT /api/products/{id} — 404 Not Found ────────────────────────
         _handler.SetNext("update product — 404 Not Found", "no products exist");
         var update404Resp = await _client.PutAsJsonAsync($"/api/products/{Guid.NewGuid()}",
             new UpdateProductRequest("Name", null, 1.0m, 1));
@@ -113,7 +129,7 @@ public sealed class ContractRecordingTests : IClassFixture<ApiWebApplicationFact
         Assert.NotNull(error404Put);
         Assert.Equal(404, error404Put.Status);
 
-        // ── 9. DELETE /api/products/{id} — 204 No Content ────────────────────
+        // ── 10. DELETE /api/products/{id} — 204 No Content ───────────────────
         // Create a dedicated product to delete (not recorded — no SetNext)
         var createForDelete = await _client.PostAsJsonAsync("/api/products",
             new CreateProductRequest("To Delete", null, 1.0m, 1));
@@ -124,7 +140,7 @@ public sealed class ContractRecordingTests : IClassFixture<ApiWebApplicationFact
         var deleteResp = await _client.DeleteAsync($"/api/products/{toDelete.Id}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResp.StatusCode);
 
-        // ── 10. DELETE /api/products/{id} — 404 Not Found ────────────────────
+        // ── 11. DELETE /api/products/{id} — 404 Not Found ────────────────────
         _handler.SetNext("delete product — 404 Not Found", "no products exist");
         var delete404Resp = await _client.DeleteAsync($"/api/products/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, delete404Resp.StatusCode);
@@ -139,7 +155,7 @@ public sealed class ContractRecordingTests : IClassFixture<ApiWebApplicationFact
 
         _recorder.WriteToFile(outputPath);
 
-        // Sanity-check: file was created and contains all 10 interactions
+        // Sanity-check: file was created and contains all 11 interactions
         Assert.True(File.Exists(outputPath),
             $"Pact file was not written to: {outputPath}");
 

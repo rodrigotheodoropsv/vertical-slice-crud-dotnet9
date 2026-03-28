@@ -334,7 +334,7 @@ npm install
 npm run test:consumer
 ```
 
-Isso gera o arquivo `pacts/ProductsConsumer-VerticalSliceCrudApi.json` com **10 interações** cobrindo todos os endpoints e status codes da API.
+Isso gera o arquivo `pacts/ProductsConsumer-VerticalSliceCrudApi.json` com **11 interações** cobrindo todos os endpoints e status codes da API.
 
 ### Interações cobertas
 
@@ -347,6 +347,7 @@ Isso gera o arquivo `pacts/ProductsConsumer-VerticalSliceCrudApi.json` com **10 
 | GET    | `/api/products/{id}`        | 200    | Produto encontrado                     |
 | GET    | `/api/products/{id}`        | 404    | Produto não encontrado                 |
 | PUT    | `/api/products/{id}`        | 200    | Atualização bem-sucedida               |
+| PUT    | `/api/products/{id}`        | 400    | Dados inválidos (nome vazio)           |
 | PUT    | `/api/products/{id}`        | 404    | Produto não encontrado                 |
 | DELETE | `/api/products/{id}`        | 204    | Remoção bem-sucedida                   |
 | DELETE | `/api/products/{id}`        | 404    | Produto não encontrado                 |

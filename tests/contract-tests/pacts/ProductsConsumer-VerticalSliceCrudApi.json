@@ -581,6 +581,75 @@
       }
     },
     {
+      "description": "a request to update a product with invalid data",
+      "providerStates": [
+        {
+          "name": "no products exist"
+        }
+      ],
+      "request": {
+        "body": {
+          "description": "Desc",
+          "name": "",
+          "price": 1,
+          "stock": 1
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "PUT",
+        "path": "/api/products/00000000-0000-0000-0000-000000000000"
+      },
+      "response": {
+        "body": {
+          "detail": "'Name' must not be empty.",
+          "status": 400,
+          "title": "Validation Error",
+          "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$.detail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 400
+      }
+    },
+    {
       "description": "a request to delete an existing product",
       "providerStates": [
         {
