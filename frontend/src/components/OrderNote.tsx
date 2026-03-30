@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -20,7 +20,10 @@ import {
 import {
   Print as PrintIcon,
   Close as CloseIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
+import { pdf } from '@react-pdf/renderer';
+import OrderPDF from './OrderPDF';
 
 import type { BrandingConfig, Order } from '../types';
 import { formatBRL } from '../utils/productMapper';
@@ -34,6 +37,46 @@ interface Props {
 
 export default function OrderNote({ order, branding, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const hasIpi = order.itens.some((i) => i.ipiPct > 0);
+  const ipiTotal = order.totalComImpostos - order.totalProdutos;
+  const cs = hasIpi ? 6 : 5; // colSpan for label cells
+
+  async function handleDownloadPDF() {
+    setPdfLoading(true);
+    try {
+      // Fetch logo as base64 to avoid CORS issues inside @react-pdf/renderer
+      let logoUrl = '';
+      try {
+        const resp = await fetch(`${window.location.origin}${branding.logoPath}`);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          logoUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch {
+        // logo unavailable — PDF renders without it
+      }
+
+      const blob = await pdf(
+        <OrderPDF order={order} branding={branding} logoUrl={logoUrl} />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Pedido-${order.numero}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   function handlePrint() {
     const content = printRef.current?.innerHTML ?? '';
@@ -119,6 +162,7 @@ export default function OrderNote({ order, branding, onClose }: Props) {
                 <TableCell align="right">Vlr Unit.</TableCell>
                 <TableCell align="right">Desconto</TableCell>
                 <TableCell align="right">Total</TableCell>
+                {hasIpi && <TableCell align="center">IPI</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -134,25 +178,42 @@ export default function OrderNote({ order, branding, onClose }: Props) {
                     <TableCell align="right">{formatBRL(item.unitPrice)}</TableCell>
                     <TableCell align="right">{item.discountTotal > 0 ? formatBRL(item.discountTotal) : '—'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</TableCell>
+                    {hasIpi && (
+                      <TableCell align="center" sx={{ color: item.ipiPct > 0 ? 'warning.dark' : 'text.disabled' }}>
+                        {item.ipiPct > 0 ? item.ipiPct.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%' : '—'}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
               <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
-                <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Subtotal bruto</TableCell>
+                <TableCell colSpan={cs} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Subtotal bruto</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(order.grossTotal)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Desconto em itens</TableCell>
+                <TableCell colSpan={cs} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Desconto em itens</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700, color: order.itemDiscountTotal > 0 ? 'success.main' : 'text.primary' }}>{formatBRL(order.itemDiscountTotal)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell colSpan={5} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Desconto geral</TableCell>
+                <TableCell colSpan={cs} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>Desconto geral</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700, color: order.orderDiscountTotal > 0 ? 'success.main' : 'text.primary' }}>{formatBRL(order.orderDiscountTotal)}</TableCell>
               </TableRow>
               <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
-                <TableCell colSpan={5} align="right" sx={{ fontWeight: 800 }}>TOTAL DO PEDIDO</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main' }}>{formatBRL(order.total)}</TableCell>
+                <TableCell colSpan={cs} align="right" sx={{ fontWeight: hasIpi ? 700 : 800 }}>{hasIpi ? 'TOTAL DOS PRODUTOS' : 'TOTAL DO PEDIDO'}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: hasIpi ? 700 : 800, color: 'primary.main' }}>{formatBRL(order.totalProdutos)}</TableCell>
               </TableRow>
+              {hasIpi && (
+                <TableRow>
+                  <TableCell colSpan={6} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>IPI Total</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: 'warning.dark' }}>{formatBRL(ipiTotal)}</TableCell>
+                </TableRow>
+              )}
+              {hasIpi && (
+                <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.12)' }}>
+                  <TableCell colSpan={6} align="right" sx={{ fontWeight: 800 }}>TOTAL C/ IMPOSTOS</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main' }}>{formatBRL(order.totalComImpostos)}</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -176,7 +237,16 @@ export default function OrderNote({ order, branding, onClose }: Props) {
 
       <DialogActions sx={{ px: 2.5, py: 1.5 }}>
         <Button onClick={onClose} variant="outlined" color="inherit">Fechar</Button>
-        <Button onClick={handlePrint} variant="contained" startIcon={<PrintIcon />}>Imprimir / PDF</Button>
+        <Button onClick={handlePrint} variant="outlined" startIcon={<PrintIcon />}>Imprimir</Button>
+        <Button
+          onClick={handleDownloadPDF}
+          variant="contained"
+          color="error"
+          startIcon={<PictureAsPdfIcon />}
+          disabled={pdfLoading}
+        >
+          {pdfLoading ? 'Gerando PDF…' : 'Baixar PDF'}
+        </Button>
       </DialogActions>
     </Dialog>
   );

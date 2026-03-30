@@ -5,6 +5,9 @@
 
 # dotenv files
 .env
+server/.env
+server/dist/
+server/logs/*.csv
 
 # User-specific files
 *.rsuser

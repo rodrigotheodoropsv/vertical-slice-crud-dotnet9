@@ -18,6 +18,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
@@ -40,7 +41,7 @@ interface Props {
   onActiveColumnsChange: (columns: string[]) => void;
 }
 
-const MAX_FILTER_CARDINALITY = 25;
+const MAX_FILTER_CARDINALITY = 200;
 
 function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
   const { allHeaders, activeColumns, rows, fieldMapping } = catalog;
@@ -50,6 +51,8 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [columnsMenuAnchor, setColumnsMenuAnchor] = useState<null | HTMLElement>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
 
   useEffect(() => {
     setColFilters((prev) => {
@@ -63,7 +66,13 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
   const numericCols = useMemo(() => {
     return new Set(
       activeColumns.filter((col) =>
-        rows.slice(0, 20).every((r) => r[col] === '' || r[col] === undefined || !isNaN(Number(r[col]))),
+        rows.slice(0, 20).every((r) => {
+          const v = String(r[col] ?? '');
+          if (v === '') return true;
+          // Values with leading zeros (e.g. '001', '051') are codes, not numbers
+          if (v.length > 1 && v.startsWith('0')) return false;
+          return !isNaN(Number(v));
+        }),
       ),
     );
   }, [activeColumns, rows]);
@@ -79,11 +88,21 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return rows.filter((row) => {
-      const matchSearch = !q || activeColumns.some((col) => String(row[col] ?? '').toLowerCase().includes(q));
+      // Search across ALL columns (including hidden ones) so codes in non-visible
+      // columns are still findable, and results aren't affected by column visibility.
+      const matchSearch = !q || Object.values(row).some((v) => String(v ?? '').toLowerCase().includes(q));
       const matchFilters = Object.entries(colFilters).every(([col, val]) => !val || String(row[col] ?? '') === val);
       return matchSearch && matchFilters;
     });
-  }, [rows, search, colFilters, activeColumns]);
+  }, [rows, search, colFilters]);
+
+  // Reset to page 0 whenever filters change
+  useEffect(() => { setPage(0); }, [search, colFilters]);
+
+  const paginated = useMemo(
+    () => filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+    [filtered, page, rowsPerPage],
+  );
 
   function setQty(id: string, value: number) {
     setQuantities((prev) => ({ ...prev, [id]: Math.max(1, value) }));
@@ -92,8 +111,8 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
   function handleAdd(row: SpreadsheetRow) {
     const id = String(row[idCol] ?? '');
     const qty = quantities[id] ?? 1;
-    const stock = getNumber(row, estoqueCol);
-    if (qty > stock) return;
+    const stock = estoqueCol ? getNumber(row, estoqueCol) : Infinity;
+    if (stock !== Infinity && qty > stock) return;
     onAddItem(row, qty);
     setQuantities((prev) => ({ ...prev, [id]: 1 }));
   }
@@ -121,7 +140,7 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
     if (col === precoCol) {
       return <Typography sx={{ fontWeight: 700 }}>{formatBRL(Number(val ?? 0))}</Typography>;
     }
-    if (col === estoqueCol) {
+    if (estoqueCol && col === estoqueCol) {
       return (
         <Chip
           size="small"
@@ -223,8 +242,9 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
           <Typography variant="body2" color="text.secondary">Tente ajustar os filtros de busca</Typography>
         </Paper>
       ) : (
-        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2.5, maxHeight: 560 }}>
-          <Table stickyHeader size="small">
+        <>
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2.5 }}>
+          <Table size="small">
             <TableHead>
               <TableRow>
                 {activeColumns.map((col) => (
@@ -241,10 +261,10 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.map((row, rowIdx) => {
+              {paginated.map((row, rowIdx) => {
                 const id = String(row[idCol] ?? rowIdx);
-                const stock = getNumber(row, estoqueCol);
-                const outOfStock = stock <= 0;
+                const stock = estoqueCol ? getNumber(row, estoqueCol) : Infinity;
+                const outOfStock = estoqueCol ? stock <= 0 : false;
                 const qty = quantities[id] ?? 1;
 
                 return (
@@ -267,7 +287,7 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
                         type="number"
                         size="small"
                         value={qty}
-                        inputProps={{ min: 1, max: stock || undefined, style: { textAlign: 'center' } }}
+                        inputProps={{ min: 1, max: stock === Infinity ? undefined : (stock || undefined), style: { textAlign: 'center' } }}
                         disabled={outOfStock}
                         onChange={(e) => setQty(id, Number(e.target.value))}
                         sx={{ width: 74 }}
@@ -294,6 +314,18 @@ function ProductCatalog({ catalog, onAddItem, onActiveColumnsChange }: Props) {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          component="div"
+          count={filtered.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
+          rowsPerPageOptions={[25, 50, 100]}
+          labelRowsPerPage="Por página:"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
+        </>
       )}
     </Stack>
   );

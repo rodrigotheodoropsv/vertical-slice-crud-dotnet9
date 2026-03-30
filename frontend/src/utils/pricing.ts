@@ -9,6 +9,8 @@ export interface OrderSummary {
   itemDiscountTotal: number;
   orderDiscountTotal: number;
   total: number;
+  totalProdutos: number;
+  totalComImpostos: number;
 }
 
 export function sanitizeDiscount(discount?: DiscountConfig): DiscountConfig {
@@ -41,20 +43,32 @@ export function calculateOrderItemPricing(unitPrice: number, quantidade: number,
     grossTotal,
     discountTotal,
     subtotal,
+    // IPI fields are computed in buildOrderItem where the row is available;
+    // here they stay at 0 since we don't have row context.
+    ipiPct: 0,
+    ipiValue: 0,
   };
 }
 
 export function buildOrderItem(
   row: SpreadsheetRow,
   quantidade: number,
-  fieldMapping: Pick<FieldMapping, 'precoCol'>,
+  fieldMapping: Pick<FieldMapping, 'precoCol' | 'ipiCol'>,
   discount?: DiscountConfig,
 ): OrderItem {
   const unitPrice = getNumber(row, fieldMapping.precoCol);
-  return {
-    row,
-    ...calculateOrderItemPricing(unitPrice, quantidade, discount),
-  };
+  const pricing = calculateOrderItemPricing(unitPrice, quantidade, discount);
+
+  // Parse IPI percentage: stored as '3,25%', '3.25%', '3.25', '0', etc.
+  let ipiPct = 0;
+  if (fieldMapping.ipiCol) {
+    const raw = String(row[fieldMapping.ipiCol] ?? '').replace('%', '').replace(',', '.');
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed)) ipiPct = parsed;
+  }
+  const ipiValue = (pricing.subtotal * ipiPct) / 100;
+
+  return { row, ...pricing, ipiPct, ipiValue };
 }
 
 export function calculateOrderSummary(items: OrderItem[], orderDiscount?: DiscountConfig): OrderSummary {
@@ -62,13 +76,17 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
   const itemsSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
   const itemDiscountTotal = items.reduce((sum, item) => sum + item.discountTotal, 0);
   const orderDiscountTotal = calculateDiscountValue(itemsSubtotal, orderDiscount);
+  const total = Math.max(0, itemsSubtotal - orderDiscountTotal);
+  const ipiTotal = items.reduce((sum, item) => sum + item.ipiValue, 0);
 
   return {
     grossTotal,
     itemsSubtotal,
     itemDiscountTotal,
     orderDiscountTotal,
-    total: Math.max(0, itemsSubtotal - orderDiscountTotal),
+    total,
+    totalProdutos: total,
+    totalComImpostos: total + ipiTotal,
   };
 }
 

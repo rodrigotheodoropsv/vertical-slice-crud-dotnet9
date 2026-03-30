@@ -4,10 +4,12 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Grid,
   MenuItem,
   Paper,
   Select,
+  Skeleton,
   Stack,
   Typography,
   FormControl,
@@ -21,7 +23,7 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 
-import { parseSpreadsheet } from '../utils/fileParser';
+import { parseCatalogFile } from '../utils/fileParser';
 import { guessFieldMapping } from '../utils/productMapper';
 import type { CatalogState, FieldMapping, SpreadsheetRow } from '../types';
 
@@ -30,21 +32,28 @@ interface Props {
   /** Catalog loaded externally (e.g. auto-loaded from public/data). Shows the
    * component in the "done" state so the user sees it is already loaded. */
   defaultCatalog?: CatalogState | null;
+  /** While true, shows a loading skeleton in place of the upload area. */
+  loading?: boolean;
 }
 
 const FIELD_LABELS: Record<keyof FieldMapping, string> = {
-  idCol: 'Coluna de ID / Codigo',
-  nomeCol: 'Coluna de Nome do Produto',
-  precoCol: 'Coluna de Preco Unitario',
-  estoqueCol: 'Coluna de Estoque',
+  idCol:     'Coluna de ID / Codigo',
+  nomeCol:   'Coluna de Nome do Produto',
+  precoCol:  'Coluna de Preco Unitario',
+  estoqueCol:'Coluna de Estoque',
+  ipiCol:    'Coluna de IPI (opcional)',
+  grupoCol:  'Coluna de Grupo (opcional)',
 };
 
-export default function FileUploader({ onLoad, defaultCatalog }: Props) {
+// Fields that are not mandatory — blank is acceptable
+const OPTIONAL_FIELDS: Set<keyof FieldMapping> = new Set(['ipiCol', 'grupoCol']);
+
+export default function FileUploader({ onLoad, defaultCatalog, loading = false }: Props) {
   const [allHeaders, setAllHeaders] = useState<string[]>([]);
   const [activeColumns, setActiveColumns] = useState<string[]>([]);
   const [rows, setRows] = useState<SpreadsheetRow[]>([]);
   const [fieldMapping, setFieldMapping] = useState<FieldMapping>({
-    idCol: '', nomeCol: '', precoCol: '', estoqueCol: '',
+    idCol: '', nomeCol: '', precoCol: '', estoqueCol: '', ipiCol: '', grupoCol: '',
   });
   const [fileName, setFileName] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -63,7 +72,7 @@ export default function FileUploader({ onLoad, defaultCatalog }: Props) {
 
   async function handleFile(file: File) {
     try {
-      const { headers: h, rows: r } = await parseSpreadsheet(file);
+      const { headers: h, rows: r } = await parseCatalogFile(file);
       if (h.length === 0) throw new Error('Arquivo sem colunas detectadas.');
       const guessed = guessFieldMapping(h);
       setAllHeaders(h);
@@ -98,7 +107,7 @@ export default function FileUploader({ onLoad, defaultCatalog }: Props) {
 
   function handleConfirm() {
     const keys = Object.keys(fieldMapping) as (keyof FieldMapping)[];
-    const missing = keys.filter((k) => !fieldMapping[k]);
+    const missing = keys.filter((k) => !OPTIONAL_FIELDS.has(k) && !fieldMapping[k]);
     if (missing.length) {
       toast.error(`Selecione as colunas obrigatorias: ${missing.map((k) => FIELD_LABELS[k]).join(', ')}`);
       return;
@@ -119,7 +128,7 @@ export default function FileUploader({ onLoad, defaultCatalog }: Props) {
     setAllHeaders([]);
     setActiveColumns([]);
     setRows([]);
-    setFieldMapping({ idCol: '', nomeCol: '', precoCol: '', estoqueCol: '' });
+    setFieldMapping({ idCol: '', nomeCol: '', precoCol: '', estoqueCol: '', ipiCol: '', grupoCol: '' });
     setFileName('');
     setStep('idle');
   }
@@ -253,28 +262,42 @@ export default function FileUploader({ onLoad, defaultCatalog }: Props) {
         transition: 'all 0.2s ease',
       }}
     >
-      <Stack alignItems="center" spacing={1.5} textAlign="center">
-        <UploadIcon sx={{ fontSize: 46, color: dragging ? 'primary.main' : 'text.secondary' }} />
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-          Arraste um arquivo ou clique para selecionar
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          CSV, XLSX ou XLS
-        </Typography>
+      {loading ? (
+        <Stack spacing={1.5}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CircularProgress size={16} thickness={5} />
+            <Typography variant="body2" color="text.secondary">Carregando catálogo de produtos...</Typography>
+          </Stack>
+          <Skeleton variant="rounded" height={40} />
+          <Stack direction="row" spacing={1.5}>
+            <Skeleton variant="rounded" height={36} sx={{ flex: 2 }} />
+            <Skeleton variant="rounded" height={36} sx={{ flex: 1 }} />
+          </Stack>
+        </Stack>
+      ) : (
+        <Stack alignItems="center" spacing={1.5} textAlign="center">
+          <UploadIcon sx={{ fontSize: 46, color: dragging ? 'primary.main' : 'text.secondary' }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Arraste um arquivo ou clique para selecionar
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            CSV, XLSX ou XLS
+          </Typography>
 
-        <Button variant="contained" component="label" startIcon={<FileIcon />}>
-          Selecionar arquivo
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-            }}
-          />
-        </Button>
-      </Stack>
+          <Button variant="contained" component="label" startIcon={<FileIcon />}>
+            Selecionar arquivo
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+              }}
+            />
+          </Button>
+        </Stack>
+      )}
     </Paper>
   );
 }

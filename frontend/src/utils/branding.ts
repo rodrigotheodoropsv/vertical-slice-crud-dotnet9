@@ -1,7 +1,7 @@
 import type { BrandingConfig } from '../types';
 
 export const BRANDING: BrandingConfig = {
-  companyName: 'Distribuidora Central',
+  companyName: 'Lubefer Industria e Comércio LTDA',
   logoPath: '/branding/company-logo.png',
   logoAlt: 'Logo da empresa',
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import {
@@ -12,6 +12,7 @@ import {
   KeyboardArrowUp as ArrowUpIcon,
   ArticleOutlined as ArticleIcon,
   MailOutline as MailIcon,
+  History as HistoryIcon,
   DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 
@@ -21,10 +22,14 @@ import OrderCart from './components/OrderCart';
 import ClientForm from './components/ClientForm';
 import OrderDetails from './components/OrderDetails';
 import OrderNote from './components/OrderNote';
+import OrcamentoNote from './components/OrcamentoNote';
 import EmailModal from './components/EmailModal';
+import EmailHistoryModal from './components/EmailHistoryModal';
 
-import { generateOrderNumber, formatDateBR, formatBRL, guessFieldMapping } from './utils/productMapper';
-import { fetchDefaultCatalog } from './utils/fileParser';
+import { generateOrderNumber, generateOrcamentoNumber, formatDateBR, formatBRL, guessFieldMapping } from './utils/productMapper';
+import { fetchDefaultCatalog, checkCatalogFileChanged } from './utils/fileParser';
+import { fetchClients, checkClientFileChanged } from './utils/clientParser';
+import type { ClientRecord } from './utils/clientParser';
 import { BRANDING } from './utils/branding';
 import {
   DEFAULT_DISCOUNT,
@@ -43,31 +48,32 @@ import type {
 } from './types';
 
 const SMTP_STORAGE_KEY = 'pvs_smtp_config';
-const CATALOG_SESSION_KEY = 'pvs_catalog';
-
-function saveCatalog(catalog: CatalogState) {
-  try { sessionStorage.setItem(CATALOG_SESSION_KEY, JSON.stringify(catalog)); } catch { /* quota */ }
-}
-
-function loadCatalog(): CatalogState | null {
-  try {
-    const raw = sessionStorage.getItem(CATALOG_SESSION_KEY);
-    return raw ? (JSON.parse(raw) as CatalogState) : null;
-  } catch { return null; }
-}
 
 const DEFAULT_CLIENT: ClientInfo = {
-  razaoSocial: '', cnpj: '', email: '', telefone: '', endereco: '',
+  razaoSocial: '', cnpj: '', email: '', telefone: '', endereco: '', comprador: '',
 };
 
 const DEFAULT_SMTP: SmtpConfig = {
-  serviceId: '', templateId: '', publicKey: '', toEmail: '', fromName: '',
+  salesEmail: 'vendas1@lubefer.com.br',
+  fromName: 'Claudio Theodoro',
+  fromCargo: 'Assistente Comercial',
+  fromCelular: '(11)99619-9894',
 };
 
 function loadSmtpConfig(): SmtpConfig {
   try {
     const raw = localStorage.getItem(SMTP_STORAGE_KEY);
-    return raw ? { ...DEFAULT_SMTP, ...JSON.parse(raw) } : DEFAULT_SMTP;
+    if (!raw) return DEFAULT_SMTP;
+    const parsed = JSON.parse(raw) as Partial<SmtpConfig>;
+    return {
+      ...DEFAULT_SMTP,
+      ...parsed,
+      // Backward compatibility: old localStorage may persist empty strings.
+      salesEmail: parsed.salesEmail?.trim() || DEFAULT_SMTP.salesEmail,
+      fromName: parsed.fromName?.trim() || DEFAULT_SMTP.fromName,
+      fromCargo: parsed.fromCargo?.trim() || DEFAULT_SMTP.fromCargo,
+      fromCelular: parsed.fromCelular?.trim() || DEFAULT_SMTP.fromCelular,
+    };
   } catch { return DEFAULT_SMTP; }
 }
 
@@ -87,28 +93,41 @@ function StepBadge({ n }: { n: number }) {
 }
 
 export default function App() {
-  const [catalog, setCatalog] = useState<CatalogState | null>(loadCatalog);
+  const [catalog, setCatalog] = useState<CatalogState | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const catalogMetaRef = useRef<{ lastModified: string | null; resolvedPath: string | null }>(
+    { lastModified: null, resolvedPath: null },
+  );
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const clientMetaRef = useRef<{ lastModified: string | null; resolvedPath: string | null }>(
+    { lastModified: null, resolvedPath: null },
+  );
   const [client, setClient] = useState<ClientInfo>(DEFAULT_CLIENT);
-  const [vendedor, setVendedor] = useState('');
+  const [vendedor, setVendedor] = useState('Claudio José Theodoro');
   const [condicaoPagamento, setCondicaoPagamento] = useState('');
   const [prazoEntrega, setPrazoEntrega] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [frete, setFrete] = useState('');
+  const [validadeOrcamento, setValidadeOrcamento] = useState('');
   const [orderDiscount, setOrderDiscount] = useState<DiscountConfig>(DEFAULT_DISCOUNT);
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>(loadSmtpConfig);
 
   const [showNote, setShowNote] = useState(false);
+  const [showOrcamento, setShowOrcamento] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [showEmailHistory, setShowEmailHistory] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(true);
   const [logoVisible, setLogoVisible] = useState(true);
 
-  // Auto-load default catalog from public/data/ on first visit (no session data)
+  // Auto-load default catalog from public/catalogo/ on every page load
   useEffect(() => {
-    if (loadCatalog()) return; // session already has a catalog
+    setCatalogLoading(true);
     fetchDefaultCatalog().then((result) => {
       if (!result) return;
-      const { headers, rows, fileName } = result;
+      const { headers, rows, fileName, lastModified, resolvedPath } = result;
       const newCatalog: CatalogState = {
         fileName,
         allHeaders: headers,
@@ -117,18 +136,71 @@ export default function App() {
         fieldMapping: guessFieldMapping(headers),
       };
       setCatalog(newCatalog);
+      catalogMetaRef.current = { lastModified, resolvedPath };
       toast.success(`Catálogo padrão carregado: ${rows.length} produtos`, { icon: '📦' });
-    });
+    }).finally(() => setCatalogLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll every 30 s for catalog file changes and reload automatically
+  useEffect(() => {
+    const POLL_MS = 30_000;
+    const id = setInterval(async () => {
+      const { resolvedPath, lastModified } = catalogMetaRef.current;
+      if (!resolvedPath) return;
+      const changed = await checkCatalogFileChanged(resolvedPath, lastModified);
+      if (!changed) return;
+      const result = await fetchDefaultCatalog();
+      if (!result) return;
+      const { headers, rows, fileName, lastModified: lm, resolvedPath: rp } = result;
+      const newCatalog: CatalogState = {
+        fileName,
+        allHeaders: headers,
+        activeColumns: headers,
+        rows,
+        fieldMapping: guessFieldMapping(headers),
+      };
+      setCatalog(newCatalog);
+      catalogMetaRef.current = { lastModified: lm, resolvedPath: rp };
+      toast.success(`Catálogo atualizado: ${rows.length} produtos`, { icon: '🔄' });
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-load client list from public/clientes/ on startup
+  useEffect(() => {
+    setClientsLoading(true);
+    fetchClients().then(({ clients: list, lastModified, resolvedPath }) => {
+      if (list.length > 0) {
+        setClients(list);
+        clientMetaRef.current = { lastModified, resolvedPath };
+        toast.success(`${list.length} clientes carregados`, { icon: '👤' });
+      }
+    }).finally(() => setClientsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll every 30 s for file changes and reload clients automatically
+  useEffect(() => {
+    const POLL_MS = 30_000;
+    const id = setInterval(async () => {
+      const { resolvedPath, lastModified } = clientMetaRef.current;
+      if (!resolvedPath) return;
+      const changed = await checkClientFileChanged(resolvedPath, lastModified);
+      if (!changed) return;
+      const { clients: list, lastModified: lm, resolvedPath: rp } = await fetchClients();
+      if (list.length > 0) {
+        setClients(list);
+        clientMetaRef.current = { lastModified: lm, resolvedPath: rp };
+        toast.success(`Clientes atualizados (${list.length})`, { icon: '🔄' });
+      }
+    }, POLL_MS);
+    return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     localStorage.setItem(SMTP_STORAGE_KEY, JSON.stringify(smtpConfig));
   }, [smtpConfig]);
 
-  useEffect(() => {
-    if (catalog) saveCatalog(catalog);
-    else sessionStorage.removeItem(CATALOG_SESSION_KEY);
-  }, [catalog]);
+
 
   const handleFileParsed = useCallback((newCatalog: CatalogState) => {
     setCatalog(newCatalog);
@@ -153,11 +225,11 @@ export default function App() {
           toastMessage = `Quantidade maxima em estoque: ${stock}`;
           return prev;
         }
-        return prev.map((i) =>
-          String(i.row[idCol] ?? '') === id
-            ? { ...i, ...calculateOrderItemPricing(price, newQty, i.discount) }
-            : i,
-        );
+        return prev.map((i) => {
+          if (String(i.row[idCol] ?? '') !== id) return i;
+          const pricing = calculateOrderItemPricing(price, newQty, i.discount);
+          return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: (pricing.subtotal * i.ipiPct) / 100 };
+        });
       }
       toastType = 'success';
       toastMessage = `${String(row[nomeCol] ?? '')} adicionado ao pedido`;
@@ -192,7 +264,8 @@ export default function App() {
         const stock = Number(i.row[estoqueCol] ?? 0);
         const price = Number(i.row[precoCol] ?? 0);
         const safeQty = Math.min(qty, stock);
-        return { ...i, ...calculateOrderItemPricing(price, safeQty, i.discount) };
+        const pricing = calculateOrderItemPricing(price, safeQty, i.discount);
+        return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: (pricing.subtotal * i.ipiPct) / 100 };
       }),
     );
   }, [catalog]);
@@ -204,7 +277,8 @@ export default function App() {
       prev.map((item) => {
         if (String(item.row[idCol] ?? '') !== rowId) return item;
         const price = Number(item.row[precoCol] ?? 0);
-        return { ...item, ...calculateOrderItemPricing(price, item.quantidade, discount) };
+        const pricing = calculateOrderItemPricing(price, item.quantidade, discount);
+        return { ...item, ...pricing, ipiPct: item.ipiPct, ipiValue: (pricing.subtotal * item.ipiPct) / 100 };
       }),
     );
   }, [catalog]);
@@ -214,12 +288,14 @@ export default function App() {
     else if (field === 'condicaoPagamento') setCondicaoPagamento(value);
     else if (field === 'prazoEntrega') setPrazoEntrega(value);
     else if (field === 'observacoes') setObservacoes(value);
+    else if (field === 'frete') setFrete(value);
+    else if (field === 'validadeOrcamento') setValidadeOrcamento(value);
   }, []);
 
   function buildOrder(): Order | null {
     if (cartItems.length === 0) { toast.error('Adicione ao menos um produto ao pedido.'); return null; }
     if (!client.razaoSocial || !client.cnpj) { toast.error('Preencha Razão Social e CNPJ do cliente.'); return null; }
-    if (!vendedor || !condicaoPagamento || !prazoEntrega) { toast.error('Preencha Vendedor, Condição de Pagamento e Prazo de Entrega.'); return null; }
+    if (!condicaoPagamento || !prazoEntrega) { toast.error('Preencha Condição de Pagamento e Prazo de Entrega.'); return null; }
     const now = new Date();
     const summary = calculateOrderSummary(cartItems, orderDiscount);
     return {
@@ -234,7 +310,11 @@ export default function App() {
       orderDiscount,
       orderDiscountTotal: summary.orderDiscountTotal,
       total: summary.total,
+      totalProdutos: summary.totalProdutos,
+      totalComImpostos: summary.totalComImpostos,
       observacoes,
+      frete,
+      validadeOrcamento,
       condicaoPagamento,
       prazoEntrega,
       vendedor,
@@ -248,6 +328,13 @@ export default function App() {
     if (!order) return;
     setCurrentOrder(order);
     setShowNote(true);
+  }
+
+  function handleEmitOrcamento() {
+    const order = buildOrder();
+    if (!order) return;
+    setCurrentOrder({ ...order, numero: generateOrcamentoNumber() });
+    setShowOrcamento(true);
   }
 
   function handleOpenEmail() {
@@ -265,10 +352,12 @@ export default function App() {
   function handleClearOrder() {
     setCartItems([]);
     setClient(DEFAULT_CLIENT);
-    setVendedor('');
+    setVendedor('Claudio José Theodoro');
     setCondicaoPagamento('');
     setPrazoEntrega('');
     setObservacoes('');
+    setFrete('');
+    setValidadeOrcamento('');
     setOrderDiscount(DEFAULT_DISCOUNT);
     toast('Pedido limpo.', { icon: '🗑️' });
   }
@@ -332,7 +421,7 @@ export default function App() {
               <Typography variant="subtitle1">Catálogo de Produtos</Typography>
               <Chip label="CSV ou XLSX" size="small" variant="outlined" sx={{ ml: 0.5 }} />
             </Stack>
-            <FileUploader onLoad={handleFileParsed} defaultCatalog={catalog} />
+            <FileUploader onLoad={handleFileParsed} defaultCatalog={catalog} loading={catalogLoading} />
           </Paper>
 
           {/* Step 2 — Selecionar Produtos */}
@@ -408,12 +497,13 @@ export default function App() {
                 <StepBadge n={4} />
                 <Typography variant="subtitle1">Informações do Pedido</Typography>
               </Stack>
-              <ClientForm value={client} onChange={setClient} />
+              <ClientForm value={client} onChange={setClient} clients={clients} onClear={() => setClient(DEFAULT_CLIENT)} loading={clientsLoading} />
               <OrderDetails
-                vendedor={vendedor}
                 condicaoPagamento={condicaoPagamento}
                 prazoEntrega={prazoEntrega}
                 observacoes={observacoes}
+                frete={frete}
+                validadeOrcamento={validadeOrcamento}
                 totalPedido={total}
                 descontoPedido={pricingSummary.orderDiscountTotal}
                 onChange={handleOrderDetail}
@@ -436,7 +526,16 @@ export default function App() {
                   onClick={handleEmitNote}
                   sx={{ bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
                 >
-                  Gerar Nota do Pedido
+                  Gerar Pedido
+                </Button>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<ArticleIcon />}
+                  onClick={handleEmitOrcamento}
+                  color="success"
+                >
+                  Gerar Orçamento
                 </Button>
                 <Button
                   variant="contained"
@@ -446,6 +545,14 @@ export default function App() {
                   color="secondary"
                 >
                   Gerar &amp; Enviar E-mail
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={<HistoryIcon />}
+                  onClick={() => setShowEmailHistory(true)}
+                >
+                  Historico de Envios
                 </Button>
                 {hasItems && (
                   <Button
@@ -471,6 +578,13 @@ export default function App() {
           onClose={() => setShowNote(false)}
         />
       )}
+      {showOrcamento && currentOrder && (
+        <OrcamentoNote
+          order={currentOrder}
+          branding={BRANDING}
+          onClose={() => setShowOrcamento(false)}
+        />
+      )}
       {showEmail && currentOrder && (
         <EmailModal
           order={currentOrder}
@@ -478,6 +592,12 @@ export default function App() {
           smtpConfig={smtpConfig}
           onConfigChange={setSmtpConfig}
           onClose={() => setShowEmail(false)}
+        />
+      )}
+      {showEmailHistory && (
+        <EmailHistoryModal
+          open={showEmailHistory}
+          onClose={() => setShowEmailHistory(false)}
         />
       )}
     </Box>

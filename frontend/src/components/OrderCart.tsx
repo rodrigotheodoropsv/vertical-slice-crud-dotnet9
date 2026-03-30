@@ -73,6 +73,7 @@ function OrderCart({
   }
 
   const summary = calculateOrderSummary(items, orderDiscount);
+  const ipiTotal = summary.totalComImpostos - summary.totalProdutos;
 
   return (
     <Stack spacing={2}>
@@ -224,10 +225,29 @@ function OrderCart({
 
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
           <Box>
-            <Typography variant="caption" color="text.secondary">TOTAL DO PEDIDO</Typography>
-            <Typography sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.3rem' }}>
-              {formatBRL(summary.total)}
-            </Typography>
+            {ipiTotal > 0 ? (
+              <>
+                <Typography variant="caption" color="text.secondary">Total dos Produtos</Typography>
+                <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.1rem' }}>
+                  {formatBRL(summary.totalProdutos)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">+ IPI</Typography>
+                <Typography sx={{ fontWeight: 700, color: 'warning.dark', fontSize: '1rem', mb: 0.5 }}>
+                  {formatBRL(ipiTotal)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">TOTAL C/ IMPOSTOS</Typography>
+                <Typography sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.3rem' }}>
+                  {formatBRL(summary.totalComImpostos)}
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="caption" color="text.secondary">TOTAL DO PEDIDO</Typography>
+                <Typography sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.3rem' }}>
+                  {formatBRL(summary.total)}
+                </Typography>
+              </>
+            )}
           </Box>
           {(summary.itemDiscountTotal + summary.orderDiscountTotal) > 0 && (
             <Chip
