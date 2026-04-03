@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Chip,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -25,6 +26,7 @@ import {
   MailOutline as MailIcon,
   AttachFile as AttachIcon,
   PictureAsPdf as PdfIcon,
+  EditOutlined as EditIcon,
 } from '@mui/icons-material';
 import { pdf } from '@react-pdf/renderer';
 import toast from 'react-hot-toast';
@@ -97,9 +99,11 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
   const [attachment, setAttachment] = useState<AttachmentType>('pedido');
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [customMessage, setCustomMessage] = useState('');
+  const [customMsgOpen, setCustomMsgOpen] = useState(false);
 
-  const plainBody = buildEmailBody(order, config);
-  const htmlBody = buildEmailHtml(order, branding, config);
+  const plainBody = buildEmailBody(order, config, customMessage);
+  const htmlBody = buildEmailHtml(order, branding, config, customMessage);
   const subject = buildEmailSubject(order);
   const resolvedTo = toEmail || config.salesEmail || order.cliente.email;
   const resolvedCc = ccEmail.trim();
@@ -276,9 +280,64 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
               )}
             </Stack>
 
-            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+            <Alert severity="info" sx={{ mb: 1.5, borderRadius: 2 }}>
               <Typography variant="body2"><strong>Assunto:</strong> {subject}</Typography>
             </Alert>
+
+            {/* Mensagem personalizada */}
+            <Box sx={{ mb: 2, border: '1px solid', borderColor: customMessage ? 'primary.light' : 'divider', borderRadius: 2, overflow: 'hidden' }}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                onClick={() => setCustomMsgOpen(o => !o)}
+                sx={{ px: 2, py: 1.2, cursor: 'pointer', userSelect: 'none', '&:hover': { bgcolor: 'action.hover' } }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <EditIcon fontSize="small" color={customMessage ? 'primary' : 'action'} />
+                  <Typography variant="body2" sx={{ fontWeight: customMessage ? 600 : 400, color: customMessage ? 'primary.main' : 'text.secondary' }}>
+                    Mensagem personalizada
+                  </Typography>
+                  {customMessage ? (
+                    <Chip size="small" label="Adicionada" color="primary" variant="filled" sx={{ height: 20, fontSize: 11 }} />
+                  ) : (
+                    <Typography variant="caption" color="text.disabled">(opcional)</Typography>
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {customMsgOpen ? '▲' : '▼'}
+                </Typography>
+              </Stack>
+              <Collapse in={customMsgOpen}>
+                <Box sx={{ px: 2, pb: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
+                    Escreva sua mensagem. Ela <strong>substitui completamente</strong> o texto padrao do template.
+                    Deixe em branco para usar o texto padrao.
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    maxRows={7}
+                    size="small"
+                    placeholder="Ex.: Conforme combinado em nossa conversa de hoje, segue o pedido referente ao item discutido."
+                    value={customMessage}
+                    onChange={(e) => setCustomMessage(e.target.value)}
+                    inputProps={{ maxLength: 800 }}
+                  />
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 0.75 }}>
+                    <Typography variant="caption" color={customMessage.length > 750 ? 'error' : 'text.disabled'}>
+                      {customMessage.length}/800 caracteres
+                    </Typography>
+                    {customMessage && (
+                      <Button size="small" color="error" variant="text" onClick={() => setCustomMessage('')} sx={{ minWidth: 0, fontSize: 12 }}>
+                        Limpar
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+              </Collapse>
+            </Box>
           </>
         )}
 

@@ -80,6 +80,19 @@ app.post('/api/email/send', async (req, res) => {
 });
 
 const frontendDistPath = path.resolve(process.cwd(), '..', 'frontend', 'dist');
+const frontendPublicPath = path.resolve(process.cwd(), '..', 'frontend', 'public');
+
+// Serve the live data directories directly from the source public/ folder so that
+// replacing a spreadsheet file (catalogo, clientes, branding) is immediately visible
+// to the polling mechanism — without requiring a frontend rebuild or server restart.
+const liveDataDirs = ['catalogo', 'clientes', 'branding'];
+for (const dir of liveDataDirs) {
+  const fullPath = path.join(frontendPublicPath, dir);
+  if (fs.existsSync(fullPath)) {
+    app.use(`/${dir}`, express.static(fullPath));
+  }
+}
+
 if (fs.existsSync(frontendDistPath)) {
   app.use(express.static(frontendDistPath));
   app.get(/^(?!\/api).*/, (_req, res) => {

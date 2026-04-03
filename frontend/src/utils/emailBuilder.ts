@@ -9,8 +9,17 @@ export function buildEmailSubject(order: Order): string {
   return `PEDIDO DO CLIENTE ${order.cliente.razaoSocial.toUpperCase()}${cod ? ` - CÓDIGO: ${cod}` : ''} ( NOTA IMPORTANTE: ATENÇÃO PARA AS OBSERVAÇÕES CONSTANTES NO CORPO DESTE E-MAIL )`;
 }
 
+function escHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '<br/>');
+}
+
 /** Build the plain-text body matching the real email template. */
-export function buildEmailBody(order: Order, smtp?: SmtpConfig): string {
+export function buildEmailBody(order: Order, smtp?: SmtpConfig, customMessage?: string): string {
   const { idCol, nomeCol } = order.fieldMapping;
   const itemLines = order.itens
     .map(
@@ -24,19 +33,11 @@ export function buildEmailBody(order: Order, smtp?: SmtpConfig): string {
   const cargo = smtp?.fromCargo || 'Assistente Comercial';
   const cel = smtp?.fromCelular || '(11)99619-9894';
 
-  return `Prezado(a),
+  const bodyParagraphs = customMessage?.trim()
+    ? customMessage.trim()
+    : `Segue anexo arquivo contendo pedido do cliente mencionado acima.\n\n\n\n" FAVOR ATENTAR PARA TODAS AS OBSERVAÇÕES CONSTANTES NO PEDIDO QUE ESTÁ SENDO ENVIADO E POR GENTILEZA NOS DAR RETORNO DE RECEBIMENTO DESTE PEDIDO ".\n\n\n\nQuaisquer dúvidas, encontro-me à disposição.`;
 
-
-
-Segue anexo arquivo contendo pedido do cliente mencionado acima.
-
-
-
-" FAVOR ATENTAR PARA TODAS AS OBSERVAÇÕES CONSTANTES NO PEDIDO QUE ESTÁ SENDO ENVIADO E POR GENTILEZA NOS DAR RETORNO DE RECEBIMENTO DESTE PEDIDO ".
-
-
-
-Quaisquer dúvidas, encontro-me à disposição.
+  return `Prezado(a),\n\n\n\n${bodyParagraphs}
 
 
 Atenciosamente,
@@ -69,7 +70,7 @@ Frete              : ${order.frete || 'CIF - Entrega pelo Carro da Própria Lube
 }
 
 /** Build an HTML email body matching the visual model. */
-export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: SmtpConfig): string {
+export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: SmtpConfig, customMessage?: string): string {
   const { idCol, nomeCol } = order.fieldMapping;
 
   const nome = smtp?.fromName || 'Claudio Theodoro';
@@ -108,7 +109,9 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: Sm
 
     <p style="margin:0 0 24px;font-size:15px"><strong>Prezado(a),</strong></p>
 
-    <p style="margin:0 0 24px;font-size:15px">
+    ${customMessage?.trim()
+      ? `<p style="margin:0 0 32px;font-size:15px;line-height:1.7">${escHtml(customMessage.trim())}</p>`
+      : `<p style="margin:0 0 24px;font-size:15px">
       Segue anexo arquivo contendo pedido do cliente mencionado acima.
     </p>
 
@@ -121,7 +124,7 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: Sm
 
     <p style="margin:0 0 32px;font-size:15px">
       Quaisquer dúvidas, encontro-me à disposição.
-    </p>
+    </p>`}
 
     <!-- Assinatura -->
     <p style="margin:0 0 6px;font-size:15px">Atenciosamente,</p>
