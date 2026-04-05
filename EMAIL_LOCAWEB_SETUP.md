@@ -34,7 +34,7 @@ Campos necessarios:
 3. `SMTP_SECURE`: `true` para porta 465
 4. `SMTP_USER`: e-mail completo da conta
 5. `SMTP_PASS`: senha da conta de e-mail
-6. `SMTP_FROM_EMAIL`: e-mail remetente (ex.: `vendas1@lubefer.com.br`)
+6. `SMTP_FROM_EMAIL`: e-mail remetente (ex.: `vendas1@email.com.br`)
 
 ## 3. Exemplo de arquivo .env
 
@@ -47,11 +47,11 @@ ALLOWED_ORIGIN=http://localhost:5173
 SMTP_HOST=email-ssl.com.br
 SMTP_PORT=465
 SMTP_SECURE=true
-SMTP_USER=vendas1@lubefer.com.br
+SMTP_USER=vendas1@email.com.br
 SMTP_PASS=SUA_SENHA_AQUI
-SMTP_FROM_EMAIL=vendas1@lubefer.com.br
+SMTP_FROM_EMAIL=vendas1@email.com.br
 
-SMTP_DEFAULT_TO=vendas1@lubefer.com.br
+SMTP_DEFAULT_TO=vendas1@email.com.br
 SMTP_AUDIT_BCC=
 
 LOG_CSV_PATH=logs/email-sends.csv
@@ -68,10 +68,10 @@ ALLOWED_ORIGIN=http://localhost:5173
 SMTP_HOST=email-ssl.com.br
 SMTP_PORT=465
 SMTP_SECURE=true
-SMTP_USER=vendas1@lubefer.com.br
-SMTP_FROM_EMAIL=vendas1@lubefer.com.br
+SMTP_USER=vendas1@email.com.br
+SMTP_FROM_EMAIL=vendas1@email.com.br
 
-SMTP_DEFAULT_TO=vendas1@lubefer.com.br
+SMTP_DEFAULT_TO=vendas1@email.com.br
 SMTP_AUDIT_BCC=
 
 LOG_CSV_PATH=logs/email-sends.csv
