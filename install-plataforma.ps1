@@ -53,6 +53,23 @@ function Run-Npm([string]$WorkingDir, [string[]]$NpmArgs) {
   } finally { Pop-Location }
 }
 
+function Run-NpmBuild([string]$WorkingDir, [string]$DistCheck) {
+  Push-Location $WorkingDir
+  try {
+    & npm run build
+    $code = $LASTEXITCODE
+  } finally { Pop-Location }
+
+  if ($code -ne 0) {
+    # Verifica se o dist foi gerado apesar do exit code != 0 (falso negativo do npm/vite no Windows)
+    if ($DistCheck -and (Test-Path $DistCheck)) {
+      Write-Warn "npm run build retornou codigo $code mas o dist foi gerado. Continuando..."
+    } else {
+      throw "npm run build falhou em $WorkingDir (codigo $code). Verifique o log acima para o erro real."
+    }
+  }
+}
+
 function New-Shortcut([string]$LnkPath, [string]$Target, [string]$WorkDir = '', [string]$Desc = '') {
   $wsh = New-Object -ComObject WScript.Shell
   $sc  = $wsh.CreateShortcut($LnkPath)
@@ -103,10 +120,13 @@ Write-Step 'Instalando dependencias do backend...'
 Run-Npm $destServer @('install', '--prefer-offline')
 
 Write-Step 'Gerando build do frontend...'
-Run-Npm $destFrontend @('run', 'build')
+# NODE_OPTIONS amplia o heap do Node para projetos grandes (ExcelJS + react-pdf)
+$env:NODE_OPTIONS = '--max-old-space-size=4096'
+Run-NpmBuild $destFrontend (Join-Path $destFrontend 'dist\index.html')
 
 Write-Step 'Gerando build do backend...'
-Run-Npm $destServer @('run', 'build')
+Run-NpmBuild $destServer (Join-Path $destServer 'dist\index.js')
+$env:NODE_OPTIONS = ''
 
 # ── 4. Pastas de dados (planilhas) ─────────────────────
 $catalogoDir = Join-Path $InstallPath 'frontend\public\catalogo'

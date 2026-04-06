@@ -284,13 +284,14 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
             <Text style={[s.tHCellB, { flex: 1, textAlign: 'left' }]}>DESCRIÇÃO</Text>
             <Text style={[s.tHCellB, { width: 28 }]}>UNID.</Text>
             <Text style={[s.tHCellB, { width: 24 }]}>QTD</Text>
-            <Text style={[s.tHCellB, { width: 60, textAlign: 'right' }]}>{'VALOR\nUNIT.'}</Text>
-            <Text style={[s.tHCellB, { width: 28 }]}>IPI</Text>
-            <Text style={[s.tHCellB, { width: 60, textAlign: 'right' }]}>{'VALOR\nUNIT. DO\nIPI'}</Text>
-            <Text style={[s.tHCellB, { width: 36 }]}>{'SUBST.\nTRIBUT.'}</Text>
-            <Text style={[s.tHCellB, { width: 60, textAlign: 'right' }]}>{'VALOR\nUNIT. DA\nSUBST.'}</Text>
-            <Text style={[s.tHCellB, { width: 64, textAlign: 'right' }]}>{'VALOR\nTOTAL\nUNIT.'}</Text>
-            <Text style={[s.tHCellL, { width: 66, textAlign: 'right' }]}>{'VALOR\nTOTAL'}</Text>
+            <Text style={[s.tHCellB, { width: 56, textAlign: 'right' }]}>{'VALOR\nUNIT.'}</Text>
+            <Text style={[s.tHCellB, { width: 50, textAlign: 'right' }]}>{'DESCONTO\n/UN'}</Text>
+            <Text style={[s.tHCellB, { width: 26 }]}>IPI</Text>
+            <Text style={[s.tHCellB, { width: 56, textAlign: 'right' }]}>{'VALOR\nUNIT. DO\nIPI'}</Text>
+            <Text style={[s.tHCellB, { width: 34 }]}>{'SUBST.\nTRIBUT.'}</Text>
+            <Text style={[s.tHCellB, { width: 56, textAlign: 'right' }]}>{'VALOR\nUNIT. DA\nSUBST.'}</Text>
+            <Text style={[s.tHCellB, { width: 60, textAlign: 'right' }]}>{'VALOR\nTOTAL\nUNIT.'}</Text>
+            <Text style={[s.tHCellL, { width: 62, textAlign: 'right' }]}>{'VALOR\nTOTAL'}</Text>
           </View>
 
           {order.itens.map((item, idx) => {
@@ -299,10 +300,12 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
             const grupo = fm.grupoCol ? String(item.row[fm.grupoCol] ?? '') : '';
             const unid  = String(item.row['Unidade'] ?? item.row['UN'] ?? item.row['Unid'] ?? '');
 
-            const ipiUnitValue   = item.ipiPct > 0 ? item.ipiValue / item.quantidade : 0;
-            const stUnitValue    = item.stPct > 0 ? item.stValue / item.quantidade : 0;
-            const valorTotalUnit = item.unitPrice + ipiUnitValue + stUnitValue;
-            const valorTotal     = valorTotalUnit * item.quantidade;
+            const discountPerUnit = item.discountTotal > 0 ? item.discountTotal / item.quantidade : 0;
+            const ipiUnitValue    = item.ipiPct > 0 ? item.ipiValue / item.quantidade : 0;
+            const stUnitValue     = item.stPct > 0 ? item.stValue / item.quantidade : 0;
+            const netUnit         = item.subtotal / item.quantidade;
+            const valorTotalUnit  = netUnit + ipiUnitValue + stUnitValue;
+            const valorTotal      = valorTotalUnit * item.quantidade;
 
             const isEven = idx % 2 === 0;
             const rowStyle = isEven ? s.tRow : s.tAltRow;
@@ -314,13 +317,14 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
                 <Text style={[s.tCellB, { flex: 1 }]}>{nome}</Text>
                 <Text style={[s.tCellB, { width: 28, textAlign: 'center' }]}>{unid}</Text>
                 <Text style={[s.tCellB, { width: 24, textAlign: 'center' }]}>{item.quantidade}</Text>
-                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{formatBRL(item.unitPrice)}</Text>
-                <Text style={[s.tCellB, { width: 28, textAlign: 'center' }]}>{item.ipiPct > 0 ? fmtPct(item.ipiPct) : '—'}</Text>
-                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{item.ipiPct > 0 ? formatBRL(ipiUnitValue) : '—'}</Text>
-                <Text style={[s.tCellB, { width: 36, textAlign: 'center' }]}>{item.stPct > 0 ? fmtPct(item.stPct) : '—'}</Text>
-                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{item.stPct > 0 ? formatBRL(stUnitValue) : '—'}</Text>
-                <Text style={[s.tCellB, { width: 64, textAlign: 'right' }]}>{formatBRL(valorTotalUnit)}</Text>
-                <Text style={[s.tCellL, { width: 66, textAlign: 'right' }]}>{formatBRL(valorTotal)}</Text>
+                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{formatBRL(item.unitPrice)}</Text>
+                <Text style={[s.tCellB, { width: 50, textAlign: 'right' }]}>{discountPerUnit > 0 ? formatBRL(discountPerUnit) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 26, textAlign: 'center' }]}>{item.ipiPct > 0 ? fmtPct(item.ipiPct) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{item.ipiPct > 0 ? formatBRL(ipiUnitValue) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 34, textAlign: 'center' }]}>{item.stPct > 0 ? fmtPct(item.stPct) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{item.stPct > 0 ? formatBRL(stUnitValue) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{formatBRL(valorTotalUnit)}</Text>
+                <Text style={[s.tCellL, { width: 62, textAlign: 'right' }]}>{formatBRL(valorTotal)}</Text>
               </View>
             );
           })}
@@ -344,8 +348,20 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
             </View>
             <View style={s.totaisRow}>
               <Text style={s.totaisLabel}>TOTAL DOS PRODUTOS</Text>
-              <Text style={s.totaisValue}>{formatBRL(order.totalProdutos)}</Text>
+              <Text style={s.totaisValue}>{formatBRL(order.totalProdutos + order.itemDiscountTotal + order.orderDiscountTotal)}</Text>
             </View>
+            {order.itemDiscountTotal > 0 && (
+              <View style={s.totaisRow}>
+                <Text style={s.totaisLabel}>DESCONTO EM ITENS: (-)</Text>
+                <Text style={[s.totaisValue, { color: '#2e7d32' }]}>{formatBRL(order.itemDiscountTotal)}</Text>
+              </View>
+            )}
+            {order.orderDiscountTotal > 0 && (
+              <View style={s.totaisRow}>
+                <Text style={s.totaisLabel}>DESCONTO GERAL: (-)</Text>
+                <Text style={[s.totaisValue, { color: '#2e7d32' }]}>{formatBRL(order.orderDiscountTotal)}</Text>
+              </View>
+            )}
             <View style={s.totaisRow}>
               <Text style={s.totaisLabel}>TOTAL IPI: (+)</Text>
               <Text style={s.totaisValue}>{formatBRL(ipiTotal)}</Text>
