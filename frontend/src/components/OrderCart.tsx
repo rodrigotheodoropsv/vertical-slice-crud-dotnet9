@@ -36,6 +36,7 @@ interface Props {
   onRemove: (rowId: string) => void;
   onChangeQty: (rowId: string, qty: number) => void;
   onItemDiscountChange: (rowId: string, discount: DiscountConfig) => void;
+  onItemStChange: (rowId: string, stPct: number) => void;
   onOrderDiscountChange: (discount: DiscountConfig) => void;
 }
 
@@ -46,6 +47,7 @@ function OrderCart({
   onRemove,
   onChangeQty,
   onItemDiscountChange,
+  onItemStChange,
   onOrderDiscountChange,
 }: Props) {
   const { idCol, nomeCol, precoCol, estoqueCol } = fieldMapping;
@@ -73,7 +75,8 @@ function OrderCart({
   }
 
   const summary = calculateOrderSummary(items, orderDiscount);
-  const ipiTotal = summary.totalComImpostos - summary.totalProdutos;
+  const stTotal = summary.totalST;
+  const ipiTotal = summary.totalComImpostos - summary.totalProdutos - stTotal;
 
   return (
     <Stack spacing={2}>
@@ -84,6 +87,8 @@ function OrderCart({
               <TableCell>Produto</TableCell>
               <TableCell align="right">Vlr Unit.</TableCell>
               <TableCell align="center">Qtd</TableCell>
+              <TableCell align="center" sx={{ width: 88 }}>SUBST. TRIB. %</TableCell>
+              <TableCell align="center" sx={{ width: 72 }}>IPI</TableCell>
               <TableCell align="right">Total</TableCell>
               <TableCell align="center" sx={{ width: 72 }} />
             </TableRow>
@@ -132,6 +137,29 @@ function OrderCart({
                       onChange={(e) => onChangeQty(id, Number(e.target.value))}
                       sx={{ width: 72 }}
                     />
+                  </TableCell>
+                  <TableCell align="center">
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={item.stPct}
+                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center' } }}
+                      onChange={(e) => onItemStChange(id, Number(e.target.value))}
+                      sx={{ width: 72 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    {item.ipiPct > 0 ? (
+                      <Chip
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        label={`${item.ipiPct.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}
+                        sx={{ height: 20, fontSize: 11, '& .MuiChip-label': { px: 0.75 } }}
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">—</Typography>
+                    )}
                   </TableCell>
                   <TableCell align="right">
                     <Typography sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</Typography>
@@ -234,6 +262,29 @@ function OrderCart({
                 <Typography variant="caption" color="text.secondary">+ IPI</Typography>
                 <Typography sx={{ fontWeight: 700, color: 'warning.dark', fontSize: '1rem', mb: 0.5 }}>
                   {formatBRL(ipiTotal)}
+                </Typography>
+                {stTotal > 0 && (
+                  <>
+                    <Typography variant="caption" color="text.secondary">+ SUBST. TRIBUT.</Typography>
+                    <Typography sx={{ fontWeight: 700, color: 'warning.dark', fontSize: '1rem', mb: 0.5 }}>
+                      {formatBRL(stTotal)}
+                    </Typography>
+                  </>
+                )}
+                <Typography variant="caption" color="text.secondary">TOTAL C/ IMPOSTOS</Typography>
+                <Typography sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.3rem' }}>
+                  {formatBRL(summary.totalComImpostos)}
+                </Typography>
+              </>
+            ) : stTotal > 0 ? (
+              <>
+                <Typography variant="caption" color="text.secondary">Total dos Produtos</Typography>
+                <Typography sx={{ fontWeight: 700, color: 'text.primary', fontSize: '1.1rem' }}>
+                  {formatBRL(summary.totalProdutos)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">+ SUBST. TRIBUT.</Typography>
+                <Typography sx={{ fontWeight: 700, color: 'warning.dark', fontSize: '1rem', mb: 0.5 }}>
+                  {formatBRL(stTotal)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">TOTAL C/ IMPOSTOS</Typography>
                 <Typography sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.3rem' }}>

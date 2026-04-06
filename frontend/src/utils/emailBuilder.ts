@@ -60,7 +60,7 @@ ITENS:
 ${itemLines}
 
 TOTAL DOS PRODUTOS : ${formatBRL(order.totalProdutos)}
-TOTAL IPI (+)      : ${formatBRL(order.totalComImpostos - order.totalProdutos)}
+TOTAL IPI (+)      : ${formatBRL(order.totalComImpostos - order.totalProdutos - order.totalST)}${order.totalST > 0 ? `\nTOTAL ST (+)       : ${formatBRL(order.totalST)}` : ''}
 TOTAL              : ${formatBRL(order.totalComImpostos)}
 
 Cond. Pagamento    : ${order.condicaoPagamento}
@@ -90,7 +90,7 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: Sm
     )
     .join('');
 
-  const ipiTotal = order.totalComImpostos - order.totalProdutos;
+  const ipiTotal = order.totalComImpostos - order.totalProdutos - order.totalST;
 
   return `
 <!DOCTYPE html>
@@ -166,6 +166,10 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: Sm
         ${ipiTotal > 0 ? `<tr style="background:#f0f9ff">
           <td colspan="4" style="padding:8px 10px;border:1px solid #e5e7eb;text-align:right;font-weight:600">Total IPI (+)</td>
           <td style="padding:8px 10px;border:1px solid #e5e7eb;text-align:right;font-weight:700">${formatBRL(ipiTotal)}</td>
+        </tr>` : ''}
+        ${order.totalST > 0 ? `<tr style="background:#f0f9ff">
+          <td colspan="4" style="padding:8px 10px;border:1px solid #e5e7eb;text-align:right;font-weight:600">Total ST (+)</td>
+          <td style="padding:8px 10px;border:1px solid #e5e7eb;text-align:right;font-weight:700">${formatBRL(order.totalST)}</td>
         </tr>` : ''}
         <tr style="background:#1e3a8a">
           <td colspan="4" style="padding:8px 10px;border:1px solid #1e3a8a;text-align:right;font-weight:600;color:#fff">TOTAL</td>

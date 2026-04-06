@@ -51,6 +51,7 @@ export function guessFieldMapping(headers: string[]): FieldMapping {
     // Optional — stays '' when file has no matching column
     estoqueCol: find('estoque', 'saldo', 'qty', 'quantidade', 'disponivel', 'stock'),
     ipiCol:     find('ipi'),
+    stCol:      find('subst', 'subs trib', 'substituição tribut', 'substituicao tribut'),
     grupoCol:   find('grupo', 'gru'),
   };
 }

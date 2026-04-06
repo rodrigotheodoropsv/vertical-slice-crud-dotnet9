@@ -13,6 +13,7 @@ export interface FieldMapping {
   precoCol: string;    // column used for unit price (subtotal calculation)
   estoqueCol: string;  // column used for stock validation
   ipiCol: string;      // column for IPI tax percentage (may be '')
+  stCol: string;       // column for Substituição Tributária percentage (may be '')
   grupoCol: string;    // column for product group code (may be '')
 }
 
@@ -37,6 +38,8 @@ export interface OrderItem {
   subtotal: number;
   ipiPct: number;    // IPI percentage (0 when not applicable)
   ipiValue: number;  // IPI monetary value for this item (subtotal * ipiPct / 100)
+  stPct: number;     // Substituição Tributária percentage (0 when not applicable)
+  stValue: number;   // ST monetary value: (subtotal + ipiValue) * stPct / 100
 }
 
 export interface Order {
@@ -52,7 +55,8 @@ export interface Order {
   orderDiscountTotal: number;
   total: number;             // total after item + order discounts (sem IPI)
   totalProdutos: number;     // same as total (alias used on PDF)
-  totalComImpostos: number;  // total + sum of all item IPI values
+  totalST: number;           // sum of all item ST values
+  totalComImpostos: number;  // total + IPI + ST
   observacoes?: string;
   frete?: string;
   validadeOrcamento?: string;

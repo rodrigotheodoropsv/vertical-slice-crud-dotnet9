@@ -42,18 +42,19 @@ const FIELD_LABELS: Record<keyof FieldMapping, string> = {
   precoCol:  'Coluna de Preco Unitario',
   estoqueCol:'Coluna de Estoque',
   ipiCol:    'Coluna de IPI (opcional)',
+  stCol:     'Coluna de Subst. Tributaria (opcional)',
   grupoCol:  'Coluna de Grupo (opcional)',
 };
 
 // Fields that are not mandatory — blank is acceptable
-const OPTIONAL_FIELDS: Set<keyof FieldMapping> = new Set(['ipiCol', 'grupoCol']);
+const OPTIONAL_FIELDS: Set<keyof FieldMapping> = new Set(['ipiCol', 'stCol', 'grupoCol']);
 
 export default function FileUploader({ onLoad, defaultCatalog, loading = false }: Props) {
   const [allHeaders, setAllHeaders] = useState<string[]>([]);
   const [activeColumns, setActiveColumns] = useState<string[]>([]);
   const [rows, setRows] = useState<SpreadsheetRow[]>([]);
   const [fieldMapping, setFieldMapping] = useState<FieldMapping>({
-    idCol: '', nomeCol: '', precoCol: '', estoqueCol: '', ipiCol: '', grupoCol: '',
+    idCol: '', nomeCol: '', precoCol: '', estoqueCol: '', ipiCol: '', stCol: '', grupoCol: '',
   });
   const [fileName, setFileName] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -128,7 +129,7 @@ export default function FileUploader({ onLoad, defaultCatalog, loading = false }
     setAllHeaders([]);
     setActiveColumns([]);
     setRows([]);
-    setFieldMapping({ idCol: '', nomeCol: '', precoCol: '', estoqueCol: '', ipiCol: '', grupoCol: '' });
+    setFieldMapping({ idCol: '', nomeCol: '', precoCol: '', estoqueCol: '', ipiCol: '', stCol: '', grupoCol: '' });
     setFileName('');
     setStep('idle');
   }

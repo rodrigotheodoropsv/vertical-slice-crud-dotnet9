@@ -228,7 +228,9 @@ export default function App() {
         return prev.map((i) => {
           if (String(i.row[idCol] ?? '') !== id) return i;
           const pricing = calculateOrderItemPricing(price, newQty, i.discount);
-          return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: (pricing.subtotal * i.ipiPct) / 100 };
+          const newIpiValue = (pricing.subtotal * i.ipiPct) / 100;
+          const newStValue = ((pricing.subtotal + newIpiValue) * i.stPct) / 100;
+          return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: newIpiValue, stPct: i.stPct, stValue: newStValue };
         });
       }
       toastType = 'success';
@@ -265,7 +267,9 @@ export default function App() {
         const price = Number(i.row[precoCol] ?? 0);
         const safeQty = Math.min(qty, stock);
         const pricing = calculateOrderItemPricing(price, safeQty, i.discount);
-        return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: (pricing.subtotal * i.ipiPct) / 100 };
+        const newIpiValue = (pricing.subtotal * i.ipiPct) / 100;
+        const newStValue = ((pricing.subtotal + newIpiValue) * i.stPct) / 100;
+        return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: newIpiValue, stPct: i.stPct, stValue: newStValue };
       }),
     );
   }, [catalog]);
@@ -278,7 +282,21 @@ export default function App() {
         if (String(item.row[idCol] ?? '') !== rowId) return item;
         const price = Number(item.row[precoCol] ?? 0);
         const pricing = calculateOrderItemPricing(price, item.quantidade, discount);
-        return { ...item, ...pricing, ipiPct: item.ipiPct, ipiValue: (pricing.subtotal * item.ipiPct) / 100 };
+        const newIpiValue = (pricing.subtotal * item.ipiPct) / 100;
+        const newStValue = ((pricing.subtotal + newIpiValue) * item.stPct) / 100;
+        return { ...item, ...pricing, ipiPct: item.ipiPct, ipiValue: newIpiValue, stPct: item.stPct, stValue: newStValue };
+      }),
+    );
+  }, [catalog]);
+
+  const handleItemStChange = useCallback((rowId: string, stPct: number) => {
+    if (!catalog) return;
+    const { idCol } = catalog.fieldMapping;
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (String(item.row[idCol] ?? '') !== rowId) return item;
+        const stValue = ((item.subtotal + item.ipiValue) * stPct) / 100;
+        return { ...item, stPct, stValue };
       }),
     );
   }, [catalog]);
@@ -311,6 +329,7 @@ export default function App() {
       orderDiscountTotal: summary.orderDiscountTotal,
       total: summary.total,
       totalProdutos: summary.totalProdutos,
+      totalST: summary.totalST,
       totalComImpostos: summary.totalComImpostos,
       observacoes,
       frete,
@@ -485,6 +504,7 @@ export default function App() {
                 onRemove={handleRemoveItem}
                 onChangeQty={handleChangeQty}
                 onItemDiscountChange={handleItemDiscountChange}
+                onItemStChange={handleItemStChange}
                 onOrderDiscountChange={setOrderDiscount}
               />
             </Paper>

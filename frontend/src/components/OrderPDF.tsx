@@ -265,7 +265,8 @@ export default function OrderPDF({ order, branding, logoUrl }: Props) {
             <Text style={[s.tHCellB, { flex: 1 }]}>DESCRIÇÃO</Text>
             <Text style={[s.tHCellB, { width: 62, textAlign: 'right' }]}>PREÇO UN</Text>
             <Text style={[s.tHCellB, { width: 62, textAlign: 'right' }]}>TOTAL</Text>
-            <Text style={[s.tHCellL, { width: 35, textAlign: 'center' }]}>IPI</Text>
+            <Text style={[s.tHCellB, { width: 35, textAlign: 'center' }]}>IPI</Text>
+            <Text style={[s.tHCellL, { width: 40, textAlign: 'center' }]}>{'SUBST.\nTRIBUT.'}</Text>
           </View>
 
           {/* Item rows — no empty rows */}
@@ -286,7 +287,8 @@ export default function OrderPDF({ order, branding, logoUrl }: Props) {
                 <Text style={[s.tCellB, { flex: 1 }]}>{nome}</Text>
                 <Text style={[s.tCellB, { width: 62, textAlign: 'right' }]}>{formatBRL(item.unitPrice)}</Text>
                 <Text style={[s.tCellB, { width: 62, textAlign: 'right' }]}>{formatBRL(item.subtotal)}</Text>
-                <Text style={[s.tCellL, { width: 35, textAlign: 'center' }]}>{ipiFormat(item.ipiPct)}</Text>
+                <Text style={[s.tCellB, { width: 35, textAlign: 'center' }]}>{item.ipiPct > 0 ? ipiFormat(item.ipiPct) : '—'}</Text>
+                <Text style={[s.tCellL, { width: 40, textAlign: 'center' }]}>{item.stPct > 0 ? ipiFormat(item.stPct) : '—'}</Text>
               </View>
             );
           })}
@@ -299,6 +301,18 @@ export default function OrderPDF({ order, branding, logoUrl }: Props) {
             <Text style={s.tpLabel}>TOTAL DOS PRODUTOS:</Text>
             <Text style={s.tpValue}>{formatBRL(order.totalProdutos)}</Text>
           </View>
+          {(order.totalComImpostos - order.totalProdutos - order.totalST) > 0 && (
+            <View style={s.totalProdRow}>
+              <Text style={s.tpLabel}>TOTAL IPI (+):</Text>
+              <Text style={s.tpValue}>{formatBRL(order.totalComImpostos - order.totalProdutos - order.totalST)}</Text>
+            </View>
+          )}
+          {order.totalST > 0 && (
+            <View style={s.totalProdRow}>
+              <Text style={s.tpLabel}>TOTAL ST (+):</Text>
+              <Text style={s.tpValue}>{formatBRL(order.totalST)}</Text>
+            </View>
+          )}
           <View style={s.totalImpostosRow}>
             <Text style={s.tiLabel}>TOTAL C/ IMPOSTOS:</Text>
             <Text style={s.tiValue}>{formatBRL(order.totalComImpostos)}</Text>

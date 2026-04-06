@@ -10,6 +10,7 @@ export interface OrderSummary {
   orderDiscountTotal: number;
   total: number;
   totalProdutos: number;
+  totalST: number;
   totalComImpostos: number;
 }
 
@@ -32,8 +33,20 @@ export function calculateDiscountValue(baseAmount: number, discount?: DiscountCo
 }
 
 export function calculateOrderItemPricing(unitPrice: number, quantidade: number, discount?: DiscountConfig) {
-  const grossTotal = Math.max(0, unitPrice) * Math.max(0, quantidade);
-  const discountTotal = calculateDiscountValue(grossTotal, discount);
+  const safePrice = Math.max(0, unitPrice);
+  const safeQty   = Math.max(0, quantidade);
+  const grossTotal = safePrice * safeQty;
+  const safeDiscount = sanitizeDiscount(discount);
+
+  // Value discounts are per-unit (R$ X off each unit × qty).
+  // Percentage discounts already scale naturally through grossTotal.
+  let discountTotal: number;
+  if (safeDiscount.kind === 'value') {
+    const perUnit = Math.min(safePrice, safeDiscount.amount);
+    discountTotal = perUnit * safeQty;
+  } else {
+    discountTotal = calculateDiscountValue(grossTotal, discount);
+  }
   const subtotal = Math.max(0, grossTotal - discountTotal);
 
   return {
@@ -43,17 +56,19 @@ export function calculateOrderItemPricing(unitPrice: number, quantidade: number,
     grossTotal,
     discountTotal,
     subtotal,
-    // IPI fields are computed in buildOrderItem where the row is available;
+    // IPI and ST fields are computed in buildOrderItem where the row is available;
     // here they stay at 0 since we don't have row context.
     ipiPct: 0,
     ipiValue: 0,
+    stPct: 0,
+    stValue: 0,
   };
 }
 
 export function buildOrderItem(
   row: SpreadsheetRow,
   quantidade: number,
-  fieldMapping: Pick<FieldMapping, 'precoCol' | 'ipiCol'>,
+  fieldMapping: Pick<FieldMapping, 'precoCol' | 'ipiCol' | 'stCol'>,
   discount?: DiscountConfig,
 ): OrderItem {
   const unitPrice = getNumber(row, fieldMapping.precoCol);
@@ -68,7 +83,16 @@ export function buildOrderItem(
   }
   const ipiValue = (pricing.subtotal * ipiPct) / 100;
 
-  return { row, ...pricing, ipiPct, ipiValue };
+  // Parse ST percentage
+  let stPct = 0;
+  if (fieldMapping.stCol) {
+    const raw = String(row[fieldMapping.stCol] ?? '').replace('%', '').replace(',', '.');
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed)) stPct = parsed;
+  }
+  const stValue = ((pricing.subtotal + ipiValue) * stPct) / 100;
+
+  return { row, ...pricing, ipiPct, ipiValue, stPct, stValue };
 }
 
 export function calculateOrderSummary(items: OrderItem[], orderDiscount?: DiscountConfig): OrderSummary {
@@ -78,6 +102,7 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
   const orderDiscountTotal = calculateDiscountValue(itemsSubtotal, orderDiscount);
   const total = Math.max(0, itemsSubtotal - orderDiscountTotal);
   const ipiTotal = items.reduce((sum, item) => sum + item.ipiValue, 0);
+  const stTotal = items.reduce((sum, item) => sum + item.stValue, 0);
 
   return {
     grossTotal,
@@ -86,7 +111,8 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
     orderDiscountTotal,
     total,
     totalProdutos: total,
-    totalComImpostos: total + ipiTotal,
+    totalST: stTotal,
+    totalComImpostos: total + ipiTotal + stTotal,
   };
 }
 
@@ -98,5 +124,5 @@ export function hasDiscount(discount?: DiscountConfig): boolean {
 export function formatDiscountLabel(discount?: DiscountConfig): string {
   const safe = sanitizeDiscount(discount);
   if (safe.amount <= 0) return 'Sem desconto';
-  return safe.kind === 'percent' ? `${safe.amount}%` : `R$ ${safe.amount.toFixed(2)}`;
+  return safe.kind === 'percent' ? `${safe.amount}%` : `R$ ${safe.amount.toFixed(2)}/un`;
 }

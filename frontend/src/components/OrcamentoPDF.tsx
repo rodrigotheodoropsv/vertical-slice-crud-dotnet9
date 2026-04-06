@@ -143,7 +143,7 @@ function fmtPct(pct: number): string {
 
 export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
   const fm = order.fieldMapping;
-  const ipiTotal = order.totalComImpostos - order.totalProdutos;
+  const ipiTotal = order.totalComImpostos - order.totalProdutos - order.totalST;
 
   return (
     <Document>
@@ -300,7 +300,8 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
             const unid  = String(item.row['Unidade'] ?? item.row['UN'] ?? item.row['Unid'] ?? '');
 
             const ipiUnitValue   = item.ipiPct > 0 ? item.ipiValue / item.quantidade : 0;
-            const valorTotalUnit = item.unitPrice + ipiUnitValue; // ST = 0
+            const stUnitValue    = item.stPct > 0 ? item.stValue / item.quantidade : 0;
+            const valorTotalUnit = item.unitPrice + ipiUnitValue + stUnitValue;
             const valorTotal     = valorTotalUnit * item.quantidade;
 
             const isEven = idx % 2 === 0;
@@ -314,10 +315,10 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
                 <Text style={[s.tCellB, { width: 28, textAlign: 'center' }]}>{unid}</Text>
                 <Text style={[s.tCellB, { width: 24, textAlign: 'center' }]}>{item.quantidade}</Text>
                 <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{formatBRL(item.unitPrice)}</Text>
-                <Text style={[s.tCellB, { width: 28, textAlign: 'center' }]}>{fmtPct(item.ipiPct)}</Text>
-                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{formatBRL(ipiUnitValue)}</Text>
-                <Text style={[s.tCellB, { width: 36, textAlign: 'center' }]}>0,00%</Text>
-                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{formatBRL(0)}</Text>
+                <Text style={[s.tCellB, { width: 28, textAlign: 'center' }]}>{item.ipiPct > 0 ? fmtPct(item.ipiPct) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{item.ipiPct > 0 ? formatBRL(ipiUnitValue) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 36, textAlign: 'center' }]}>{item.stPct > 0 ? fmtPct(item.stPct) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 60, textAlign: 'right' }]}>{item.stPct > 0 ? formatBRL(stUnitValue) : '—'}</Text>
                 <Text style={[s.tCellB, { width: 64, textAlign: 'right' }]}>{formatBRL(valorTotalUnit)}</Text>
                 <Text style={[s.tCellL, { width: 66, textAlign: 'right' }]}>{formatBRL(valorTotal)}</Text>
               </View>
@@ -351,7 +352,7 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
             </View>
             <View style={s.totaisRow}>
               <Text style={s.totaisLabel}>TOTAL ST: (+)</Text>
-              <Text style={s.totaisValue}>{formatBRL(0)}</Text>
+              <Text style={s.totaisValue}>{formatBRL(order.totalST)}</Text>
             </View>
             <View style={s.totaisLastRow}>
               <Text style={s.totaisLabelBold}>ORÇAMENTO TOTAL</Text>

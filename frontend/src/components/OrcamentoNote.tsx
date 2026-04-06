@@ -39,8 +39,10 @@ export default function OrcamentoNote({ order, branding, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const hasIpi = order.itens.some((i) => i.ipiPct > 0);
-  const ipiTotal = order.totalComImpostos - order.totalProdutos;
-  const cs = hasIpi ? 6 : 5;
+  const hasSt  = order.itens.some((i) => i.stPct  > 0);
+  const hasImpostos = hasIpi || hasSt;
+  const realIpiTotal = order.totalComImpostos - order.totalProdutos - order.totalST;
+  const cs = 5 + (hasIpi ? 1 : 0) + (hasSt ? 1 : 0);
 
   async function handleDownloadPDF() {
     setPdfLoading(true);
@@ -162,6 +164,7 @@ export default function OrcamentoNote({ order, branding, onClose }: Props) {
                 <TableCell align="right">Vlr Unit.</TableCell>
                 <TableCell align="right">Total</TableCell>
                 {hasIpi && <TableCell align="center">IPI</TableCell>}
+                {hasSt  && <TableCell align="center">Subst. Trib.</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -183,6 +186,11 @@ export default function OrcamentoNote({ order, branding, onClose }: Props) {
                         {item.ipiPct > 0 ? item.ipiPct.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%' : '—'}
                       </TableCell>
                     )}
+                    {hasSt && (
+                      <TableCell align="center" sx={{ color: item.stPct > 0 ? 'error.main' : 'text.disabled' }}>
+                        {item.stPct > 0 ? item.stPct.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%' : '—'}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
@@ -199,18 +207,24 @@ export default function OrcamentoNote({ order, branding, onClose }: Props) {
                 <TableCell align="right" sx={{ fontWeight: 700, color: order.orderDiscountTotal > 0 ? 'success.main' : 'text.primary' }}>{formatBRL(order.orderDiscountTotal)}</TableCell>
               </TableRow>
               <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.07)' }}>
-                <TableCell colSpan={cs} align="right" sx={{ fontWeight: hasIpi ? 700 : 800 }}>{hasIpi ? 'TOTAL DOS PRODUTOS' : 'TOTAL DO ORÇAMENTO'}</TableCell>
-                <TableCell align="right" sx={{ fontWeight: hasIpi ? 700 : 800, color: 'primary.main' }}>{formatBRL(order.totalProdutos)}</TableCell>
+                <TableCell colSpan={cs} align="right" sx={{ fontWeight: hasImpostos ? 700 : 800 }}>{hasImpostos ? 'TOTAL DOS PRODUTOS' : 'TOTAL DO ORÇAMENTO'}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: hasImpostos ? 700 : 800, color: 'primary.main' }}>{formatBRL(order.totalProdutos)}</TableCell>
               </TableRow>
-              {hasIpi && (
+              {hasIpi && realIpiTotal > 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>IPI Total</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, color: 'warning.dark' }}>{formatBRL(ipiTotal)}</TableCell>
+                  <TableCell colSpan={cs} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>IPI Total</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: 'warning.dark' }}>{formatBRL(realIpiTotal)}</TableCell>
                 </TableRow>
               )}
-              {hasIpi && (
+              {hasSt && (
+                <TableRow>
+                  <TableCell colSpan={cs} align="right" sx={{ fontWeight: 700, color: 'text.secondary' }}>ST Total</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: 'error.main' }}>{formatBRL(order.totalST)}</TableCell>
+                </TableRow>
+              )}
+              {hasImpostos && (
                 <TableRow sx={{ bgcolor: 'rgba(21, 101, 192, 0.12)' }}>
-                  <TableCell colSpan={6} align="right" sx={{ fontWeight: 800 }}>TOTAL C/ IMPOSTOS</TableCell>
+                  <TableCell colSpan={cs} align="right" sx={{ fontWeight: 800 }}>TOTAL C/ IMPOSTOS</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main' }}>{formatBRL(order.totalComImpostos)}</TableCell>
                 </TableRow>
               )}
