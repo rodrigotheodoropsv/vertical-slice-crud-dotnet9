@@ -13,6 +13,7 @@ import { formatBRL } from '../utils/productMapper';
 const VENDEDOR_FIXO = 'Claúdio José Theodoro';
 
 interface Props {
+  orderDate: string;
   condicaoPagamento: string;
   prazoEntrega: string;
   observacoes: string;
@@ -23,7 +24,7 @@ interface Props {
   onChange: (field: string, value: string) => void;
 }
 
-export default function OrderDetails({ condicaoPagamento, prazoEntrega, observacoes, frete, validadeOrcamento, totalPedido, descontoPedido, onChange }: Props) {
+export default function OrderDetails({ orderDate, condicaoPagamento, prazoEntrega, observacoes, frete, validadeOrcamento, totalPedido, descontoPedido, onChange }: Props) {
   return (
     <Card variant="outlined" sx={{ borderRadius: 2.5 }}>
       <CardContent sx={{ p: { xs: 2.2, sm: 2.8 } }}>
@@ -43,6 +44,16 @@ export default function OrderDetails({ condicaoPagamento, prazoEntrega, observac
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>{VENDEDOR_FIXO}</Typography>
             </Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              label="Data do Pedido"
+              placeholder="DD/MM/AAAA"
+              value={orderDate}
+              onChange={(e) => onChange('data', e.target.value)}
+            />
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>

@@ -106,6 +106,7 @@ export default function App() {
   );
   const [client, setClient] = useState<ClientInfo>(DEFAULT_CLIENT);
   const [vendedor, setVendedor] = useState('Claudio José Theodoro');
+  const [orderDate, setOrderDate] = useState(() => formatDateBR(new Date().toISOString().slice(0, 10)));
   const [condicaoPagamento, setCondicaoPagamento] = useState('');
   const [prazoEntrega, setPrazoEntrega] = useState('');
   const [observacoes, setObservacoes] = useState('');
@@ -319,6 +320,7 @@ export default function App() {
 
   const handleOrderDetail = useCallback((field: string, value: string) => {
     if (field === 'vendedor') setVendedor(value);
+    else if (field === 'data') setOrderDate(value);
     else if (field === 'condicaoPagamento') setCondicaoPagamento(value);
     else if (field === 'prazoEntrega') setPrazoEntrega(value);
     else if (field === 'observacoes') setObservacoes(value);
@@ -334,7 +336,7 @@ export default function App() {
     const summary = calculateOrderSummary(cartItems, orderDiscount);
     return {
       numero: generateOrderNumber(),
-      data: formatDateBR(now.toISOString().slice(0, 10)),
+      data: orderDate,
       hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       cliente: client,
       itens: cartItems,
@@ -388,6 +390,7 @@ export default function App() {
     setCartItems([]);
     setClient(DEFAULT_CLIENT);
     setVendedor('Claudio José Theodoro');
+    setOrderDate(formatDateBR(new Date().toISOString().slice(0, 10)));
     setCondicaoPagamento('');
     setPrazoEntrega('');
     setObservacoes('');
@@ -536,6 +539,7 @@ export default function App() {
               </Stack>
               <ClientForm value={client} onChange={setClient} clients={clients} onClear={() => setClient(DEFAULT_CLIENT)} loading={clientsLoading} />
               <OrderDetails
+                orderDate={orderDate}
                 condicaoPagamento={condicaoPagamento}
                 prazoEntrega={prazoEntrega}
                 observacoes={observacoes}

@@ -29,6 +29,11 @@ function formatPhone(raw: string) {
   return digits.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
 }
 
+function formatIE(raw: string) {
+  const digits = raw.replace(/\D/g, '').slice(0, 14);
+  return digits.replace(/(\d{3})(?=\d)/g, '$1.');
+}
+
 export default function ClientForm({ value, onChange, clients = [], onClear, loading = false }: Props) {
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
 
@@ -49,7 +54,7 @@ export default function ClientForm({ value, onChange, clients = [], onClear, loa
       cep:               rec.cep,
       cidade:            rec.cidade,
       estado:            rec.estado,
-      inscricaoEstadual: rec.inscricaoEstadual,
+      inscricaoEstadual: formatIE(rec.inscricaoEstadual ?? ''),
       codCliente:        rec.codigo,
       comprador:         rec.comprador,
     });
@@ -134,7 +139,7 @@ export default function ClientForm({ value, onChange, clients = [], onClear, loa
                   fullWidth
                   label="Inscricao Estadual"
                   value={value.inscricaoEstadual ?? ''}
-                  onChange={(e) => set('inscricaoEstadual', e.target.value)}
+                  onChange={(e) => set('inscricaoEstadual', formatIE(e.target.value))}
                 />
               </Grid>
 

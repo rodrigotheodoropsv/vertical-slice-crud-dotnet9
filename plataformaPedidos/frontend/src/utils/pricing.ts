@@ -116,6 +116,13 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
   const ipiTotal = items.reduce((sum, item) => sum + item.ipiValue, 0);
   const stTotal = items.reduce((sum, item) => sum + item.stValue, 0);
 
+  // When a general order discount is applied, taxes must be proportionally
+  // reduced to reflect that they are calculated over the discounted total,
+  // not over the pre-discount subtotal.
+  const discountRatio = itemsSubtotal > 0 ? total / itemsSubtotal : 1;
+  const adjustedIpiTotal = ipiTotal * discountRatio;
+  const adjustedStTotal = stTotal * discountRatio;
+
   return {
     grossTotal,
     itemsSubtotal,
@@ -123,8 +130,8 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
     orderDiscountTotal,
     total,
     totalProdutos: total,
-    totalST: stTotal,
-    totalComImpostos: total + ipiTotal + stTotal,
+    totalST: adjustedStTotal,
+    totalComImpostos: total + adjustedIpiTotal + adjustedStTotal,
   };
 }
 
