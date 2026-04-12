@@ -26,7 +26,7 @@ import { pdf } from '@react-pdf/renderer';
 import OrderPDF from './OrderPDF';
 
 import type { BrandingConfig, Order } from '../types';
-import { formatBRL } from '../utils/productMapper';
+import { formatBRL, formatBRLPrecise } from '../utils/productMapper';
 import { getAbsoluteAssetUrl } from '../utils/branding';
 
 interface Props {
@@ -178,7 +178,7 @@ export default function OrderNote({ order, branding, onClose }: Props) {
                     <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{id}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{nome}</TableCell>
                     <TableCell align="center">{item.quantidade}</TableCell>
-                    <TableCell align="right">{formatBRL(item.unitPrice)}</TableCell>
+                    <TableCell align="right">{formatBRLPrecise(item.effectiveUnitPrice)}</TableCell>
                     <TableCell align="right">{item.discountTotal > 0 ? formatBRL(item.discountTotal) : '—'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</TableCell>
                     {hasIpi && (

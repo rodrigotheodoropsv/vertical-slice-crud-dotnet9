@@ -26,7 +26,7 @@ import { pdf } from '@react-pdf/renderer';
 import OrcamentoPDF from './OrcamentoPDF';
 
 import type { BrandingConfig, Order } from '../types';
-import { formatBRL } from '../utils/productMapper';
+import { formatBRL, formatBRLPrecise } from '../utils/productMapper';
 import { getAbsoluteAssetUrl } from '../utils/branding';
 
 interface Props {
@@ -179,7 +179,7 @@ export default function OrcamentoNote({ order, branding, onClose }: Props) {
                     <TableCell sx={{ fontWeight: 600 }}>{nome}</TableCell>
                     <TableCell align="center">{unid || '—'}</TableCell>
                     <TableCell align="center">{item.quantidade}</TableCell>
-                    <TableCell align="right">{formatBRL(item.unitPrice)}</TableCell>
+                    <TableCell align="right">{formatBRLPrecise(item.effectiveUnitPrice)}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{formatBRL(item.subtotal)}</TableCell>
                     {hasIpi && (
                       <TableCell align="center" sx={{ color: item.ipiPct > 0 ? 'warning.dark' : 'text.disabled' }}>

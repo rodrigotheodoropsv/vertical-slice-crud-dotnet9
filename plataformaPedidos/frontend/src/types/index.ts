@@ -31,9 +31,11 @@ export interface CatalogState {
 export interface OrderItem {
   row: SpreadsheetRow;
   quantidade: number;
-  unitPrice: number;
+  unitPrice: number;          // base price from the catalog (before markup)
+  markupPct: number;          // percentage added on top of unitPrice (0 = none)
+  effectiveUnitPrice: number; // unitPrice * (1 + markupPct / 100)
   discount: DiscountConfig;
-  grossTotal: number;
+  grossTotal: number;         // effectiveUnitPrice * quantidade
   discountTotal: number;
   subtotal: number;
   ipiPct: number;    // IPI percentage (0 when not applicable)

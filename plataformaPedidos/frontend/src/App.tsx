@@ -227,7 +227,7 @@ export default function App() {
         }
         return prev.map((i) => {
           if (String(i.row[idCol] ?? '') !== id) return i;
-          const pricing = calculateOrderItemPricing(price, newQty, i.discount);
+          const pricing = calculateOrderItemPricing(price, newQty, i.discount, i.markupPct);
           const newIpiValue = (pricing.subtotal * i.ipiPct) / 100;
           const newStValue = ((pricing.subtotal + newIpiValue) * i.stPct) / 100;
           return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: newIpiValue, stPct: i.stPct, stValue: newStValue };
@@ -266,7 +266,7 @@ export default function App() {
         const stock = Number(i.row[estoqueCol] ?? 0);
         const price = Number(i.row[precoCol] ?? 0);
         const safeQty = Math.min(qty, stock);
-        const pricing = calculateOrderItemPricing(price, safeQty, i.discount);
+        const pricing = calculateOrderItemPricing(price, safeQty, i.discount, i.markupPct);
         const newIpiValue = (pricing.subtotal * i.ipiPct) / 100;
         const newStValue = ((pricing.subtotal + newIpiValue) * i.stPct) / 100;
         return { ...i, ...pricing, ipiPct: i.ipiPct, ipiValue: newIpiValue, stPct: i.stPct, stValue: newStValue };
@@ -281,7 +281,23 @@ export default function App() {
       prev.map((item) => {
         if (String(item.row[idCol] ?? '') !== rowId) return item;
         const price = Number(item.row[precoCol] ?? 0);
-        const pricing = calculateOrderItemPricing(price, item.quantidade, discount);
+        const pricing = calculateOrderItemPricing(price, item.quantidade, discount, item.markupPct);
+        const newIpiValue = (pricing.subtotal * item.ipiPct) / 100;
+        const newStValue = ((pricing.subtotal + newIpiValue) * item.stPct) / 100;
+        return { ...item, ...pricing, ipiPct: item.ipiPct, ipiValue: newIpiValue, stPct: item.stPct, stValue: newStValue };
+      }),
+    );
+  }, [catalog]);
+
+  const handleItemMarkupChange = useCallback((rowId: string, markupPct: number) => {
+    if (!catalog) return;
+    const { idCol, precoCol } = catalog.fieldMapping;
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (String(item.row[idCol] ?? '') !== rowId) return item;
+        const price = Number(item.row[precoCol] ?? 0);
+        const safeMarkup = Math.max(0, markupPct);
+        const pricing = calculateOrderItemPricing(price, item.quantidade, item.discount, safeMarkup);
         const newIpiValue = (pricing.subtotal * item.ipiPct) / 100;
         const newStValue = ((pricing.subtotal + newIpiValue) * item.stPct) / 100;
         return { ...item, ...pricing, ipiPct: item.ipiPct, ipiValue: newIpiValue, stPct: item.stPct, stValue: newStValue };
@@ -504,6 +520,7 @@ export default function App() {
                 onRemove={handleRemoveItem}
                 onChangeQty={handleChangeQty}
                 onItemDiscountChange={handleItemDiscountChange}
+                onItemMarkupChange={handleItemMarkupChange}
                 onItemStChange={handleItemStChange}
                 onOrderDiscountChange={setOrderDiscount}
               />

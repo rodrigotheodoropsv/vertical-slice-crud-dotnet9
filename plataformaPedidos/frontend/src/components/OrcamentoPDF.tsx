@@ -1,6 +1,6 @@
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import type { BrandingConfig, Order } from '../types';
-import { formatBRL } from '../utils/productMapper';
+import { formatBRL, formatBRLPrecise } from '../utils/productMapper';
 
 interface Props {
   order: Order;
@@ -317,7 +317,7 @@ export default function OrcamentoPDF({ order, branding, logoUrl }: Props) {
                 <Text style={[s.tCellB, { flex: 1 }]}>{nome}</Text>
                 <Text style={[s.tCellB, { width: 28, textAlign: 'center' }]}>{unid}</Text>
                 <Text style={[s.tCellB, { width: 24, textAlign: 'center' }]}>{item.quantidade}</Text>
-                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{formatBRL(item.unitPrice)}</Text>
+                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{item.markupPct > 0 ? formatBRLPrecise(item.effectiveUnitPrice) : formatBRL(item.effectiveUnitPrice)}</Text>
                 <Text style={[s.tCellB, { width: 50, textAlign: 'right' }]}>{discountPerUnit > 0 ? formatBRL(discountPerUnit) : '—'}</Text>
                 <Text style={[s.tCellB, { width: 26, textAlign: 'center' }]}>{item.ipiPct > 0 ? fmtPct(item.ipiPct) : '—'}</Text>
                 <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{item.ipiPct > 0 ? formatBRL(ipiUnitValue) : '—'}</Text>

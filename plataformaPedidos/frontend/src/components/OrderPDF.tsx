@@ -1,6 +1,6 @@
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import type { BrandingConfig, Order } from '../types';
-import { formatBRL } from '../utils/productMapper';
+import { formatBRL, formatBRLPrecise } from '../utils/productMapper';
 
 interface Props {
   order: Order;
@@ -286,7 +286,7 @@ export default function OrderPDF({ order, branding, logoUrl }: Props) {
                 <Text style={[s.tCellB, { width: 36 }]}>{grupo}</Text>
                 <Text style={[s.tCellB, { width: 58 }]}>{id}</Text>
                 <Text style={[s.tCellB, { flex: 1 }]}>{nome}</Text>
-                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{formatBRL(item.unitPrice)}</Text>
+                <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{item.markupPct > 0 ? formatBRLPrecise(item.effectiveUnitPrice) : formatBRL(item.effectiveUnitPrice)}</Text>
                 <Text style={[s.tCellB, { width: 48, textAlign: 'right' }]}>{item.discountTotal > 0 ? formatBRL(item.discountTotal / item.quantidade) : '—'}</Text>
                 <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{formatBRL(item.subtotal)}</Text>
                 <Text style={[s.tCellB, { width: 33, textAlign: 'center' }]}>{item.ipiPct > 0 ? ipiFormat(item.ipiPct) : '—'}</Text>

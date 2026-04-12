@@ -25,9 +25,9 @@ import {
 } from '@mui/icons-material';
 
 import type { DiscountConfig, FieldMapping, OrderItem } from '../types';
-import { formatBRL, getNumber } from '../utils/productMapper';
+import { formatBRL, formatBRLPrecise, getNumber } from '../utils/productMapper';
 import DiscountInputControl from './DiscountInputControl';
-import { calculateOrderSummary, DEFAULT_DISCOUNT, formatDiscountLabel, hasDiscount } from '../utils/pricing';
+import { calculateOrderSummary, DEFAULT_DISCOUNT, formatDiscountLabel, formatMarkupLabel, hasDiscount, hasMarkup } from '../utils/pricing';
 
 interface Props {
   items: OrderItem[];
@@ -36,6 +36,7 @@ interface Props {
   onRemove: (rowId: string) => void;
   onChangeQty: (rowId: string, qty: number) => void;
   onItemDiscountChange: (rowId: string, discount: DiscountConfig) => void;
+  onItemMarkupChange: (rowId: string, markupPct: number) => void;
   onItemStChange: (rowId: string, stPct: number) => void;
   onOrderDiscountChange: (discount: DiscountConfig) => void;
 }
@@ -47,6 +48,7 @@ function OrderCart({
   onRemove,
   onChangeQty,
   onItemDiscountChange,
+  onItemMarkupChange,
   onItemStChange,
   onOrderDiscountChange,
 }: Props) {
@@ -87,6 +89,7 @@ function OrderCart({
               <TableCell>Produto</TableCell>
               <TableCell align="right">Vlr Unit.</TableCell>
               <TableCell align="center">Qtd</TableCell>
+              <TableCell align="center" sx={{ width: 80 }}>ACR. %</TableCell>
               <TableCell align="center" sx={{ width: 88 }}>SUBST. TRIB. %</TableCell>
               <TableCell align="center" sx={{ width: 72 }}>IPI</TableCell>
               <TableCell align="right">Total</TableCell>
@@ -105,6 +108,15 @@ function OrderCart({
                     <Typography sx={{ fontWeight: 600, lineHeight: 1.3 }}>{nome}</Typography>
                     <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.3, flexWrap: 'wrap', gap: 0.5 }}>
                       <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{id}</Typography>
+                      {hasMarkup(item.markupPct) && (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          label={formatMarkupLabel(item.markupPct)}
+                          sx={{ height: 18, fontSize: 10, '& .MuiChip-label': { px: 0.75 } }}
+                        />
+                      )}
                       {hasDiscount(item.discount) && (
                         <Chip
                           size="small"
@@ -117,7 +129,25 @@ function OrderCart({
                     </Stack>
                   </TableCell>
                   <TableCell align="right">
-                    {item.discountTotal > 0 ? (
+                    {hasMarkup(item.markupPct) ? (
+                      <>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', textDecoration: 'line-through' }}>
+                          {formatBRL(price)}
+                        </Typography>
+                        <Tooltip
+                          title={`${formatBRL(price)} + ${item.markupPct}% = ${formatBRLPrecise(item.effectiveUnitPrice)}`}
+                          placement="top"
+                          arrow
+                        >
+                          <Typography variant="body2" sx={{ color: 'warning.dark', fontWeight: 600, cursor: 'help', borderBottom: '1px dashed', borderColor: 'warning.light', display: 'inline-block' }}>
+                            {formatBRLPrecise(item.effectiveUnitPrice)}
+                          </Typography>
+                        </Tooltip>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', fontSize: 9 }}>
+                          base {formatBRL(price)} + {item.markupPct}%
+                        </Typography>
+                      </>
+                    ) : item.discountTotal > 0 ? (
                       <>
                         <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', textDecoration: 'line-through' }}>
                           {formatBRL(item.grossTotal)}
@@ -135,6 +165,20 @@ function OrderCart({
                       value={item.quantidade}
                       inputProps={{ min: 1, max: stock || undefined, style: { textAlign: 'center' } }}
                       onChange={(e) => onChangeQty(id, Number(e.target.value))}
+                      sx={{ width: 72 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={item.markupPct || ''}
+                      placeholder="0"
+                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center' } }}
+                      onChange={(e) => {
+                        const val = Number(e.target.value.replace(',', '.'));
+                        onItemMarkupChange(id, Number.isFinite(val) ? Math.max(0, val) : 0);
+                      }}
                       sx={{ width: 72 }}
                     />
                   </TableCell>
@@ -166,10 +210,16 @@ function OrderCart({
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={0} justifyContent="center">
-                      <Tooltip title={hasDiscount(item.discount) ? `Desconto: ${formatDiscountLabel(item.discount)}` : 'Aplicar desconto no item'}>
+                      <Tooltip title={
+                        hasMarkup(item.markupPct)
+                          ? `Acréscimo: ${formatMarkupLabel(item.markupPct)}${hasDiscount(item.discount) ? ` · Desconto: ${formatDiscountLabel(item.discount)}` : ''}`
+                          : hasDiscount(item.discount)
+                            ? `Desconto: ${formatDiscountLabel(item.discount)}`
+                            : 'Aplicar acréscimo ou desconto'
+                      }>
                         <IconButton
                           size="small"
-                          color={hasDiscount(item.discount) ? 'success' : 'default'}
+                          color={hasMarkup(item.markupPct) ? 'warning' : hasDiscount(item.discount) ? 'success' : 'default'}
                           onClick={(e) => setDiscountAnchor({ el: e.currentTarget, itemId: id })}
                         >
                           <DiscountIcon fontSize="small" />

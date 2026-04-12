@@ -1,8 +1,20 @@
 import type { FieldMapping } from '../types';
 
-/** Format a number as Brazilian currency. */
+/** Format a number as Brazilian currency (always 2 decimal places). */
 export function formatBRL(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+/**
+ * Format a number as Brazilian currency with up to 4 decimal places,
+ * trimming insignificant trailing zeros beyond the 2nd decimal.
+ * Used for unit prices affected by markup so the math is fully verifiable.
+ * e.g. 5,1788 → "R$\u00a05,1788"  |  5,20 → "R$\u00a05,20"
+ */
+export function formatBRLPrecise(value: number): string {
+  // Show exactly as many decimals as needed (min 2, max 4).
+  const s4 = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return s4;
 }
 
 /** Format a date string (ISO) to Brazilian format dd/mm/yyyy. */

@@ -32,17 +32,26 @@ export function calculateDiscountValue(baseAmount: number, discount?: DiscountCo
   return Math.min(safeBase, safeDiscount.amount);
 }
 
-export function calculateOrderItemPricing(unitPrice: number, quantidade: number, discount?: DiscountConfig) {
-  const safePrice = Math.max(0, unitPrice);
-  const safeQty   = Math.max(0, quantidade);
-  const grossTotal = safePrice * safeQty;
+export function calculateOrderItemPricing(
+  unitPrice: number,
+  quantidade: number,
+  discount?: DiscountConfig,
+  markupPct?: number,
+) {
+  const safePrice  = Math.max(0, unitPrice);
+  const safeQty    = Math.max(0, quantidade);
+  const safeMarkup = Math.max(0, markupPct ?? 0);
+  // Keep full floating-point precision so the document totals are exact.
+  // The UI is responsible for displaying enough decimal places to be verifiable.
+  const effectiveUnitPrice = safePrice * (1 + safeMarkup / 100);
+  const grossTotal = effectiveUnitPrice * safeQty;
   const safeDiscount = sanitizeDiscount(discount);
 
   // Value discounts are per-unit (R$ X off each unit × qty).
   // Percentage discounts already scale naturally through grossTotal.
   let discountTotal: number;
   if (safeDiscount.kind === 'value') {
-    const perUnit = Math.min(safePrice, safeDiscount.amount);
+    const perUnit = Math.min(effectiveUnitPrice, safeDiscount.amount);
     discountTotal = perUnit * safeQty;
   } else {
     discountTotal = calculateDiscountValue(grossTotal, discount);
@@ -50,8 +59,10 @@ export function calculateOrderItemPricing(unitPrice: number, quantidade: number,
   const subtotal = Math.max(0, grossTotal - discountTotal);
 
   return {
-    unitPrice: Math.max(0, unitPrice),
-    quantidade: Math.max(0, quantidade),
+    unitPrice: safePrice,
+    markupPct: safeMarkup,
+    effectiveUnitPrice,
+    quantidade: safeQty,
     discount: sanitizeDiscount(discount),
     grossTotal,
     discountTotal,
@@ -70,9 +81,10 @@ export function buildOrderItem(
   quantidade: number,
   fieldMapping: Pick<FieldMapping, 'precoCol' | 'ipiCol' | 'stCol'>,
   discount?: DiscountConfig,
+  markupPct?: number,
 ): OrderItem {
   const unitPrice = getNumber(row, fieldMapping.precoCol);
-  const pricing = calculateOrderItemPricing(unitPrice, quantidade, discount);
+  const pricing = calculateOrderItemPricing(unitPrice, quantidade, discount, markupPct);
 
   // Parse IPI percentage: stored as '3,25%', '3.25%', '3.25', '0', etc.
   let ipiPct = 0;
@@ -125,4 +137,14 @@ export function formatDiscountLabel(discount?: DiscountConfig): string {
   const safe = sanitizeDiscount(discount);
   if (safe.amount <= 0) return 'Sem desconto';
   return safe.kind === 'percent' ? `${safe.amount}%` : `R$ ${safe.amount.toFixed(2)}/un`;
+}
+
+export function hasMarkup(markupPct?: number): boolean {
+  return (markupPct ?? 0) > 0;
+}
+
+export function formatMarkupLabel(markupPct?: number): string {
+  const pct = markupPct ?? 0;
+  if (pct <= 0) return 'Sem acréscimo';
+  return `+${pct.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}%`;
 }
