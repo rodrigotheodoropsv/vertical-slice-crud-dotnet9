@@ -3,11 +3,13 @@ import {
   Box,
   Chip,
   Divider,
+  FormControlLabel,
   Grid,
   IconButton,
   Paper,
   Popover,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -54,6 +56,7 @@ function OrderCart({
 }: Props) {
   const { idCol, nomeCol, precoCol, estoqueCol } = fieldMapping;
   const [discountAnchor, setDiscountAnchor] = useState<{ el: HTMLElement; itemId: string } | null>(null);
+  const [showGeneralDiscount, setShowGeneralDiscount] = useState(false);
   const popoverItem = discountAnchor ? items.find((i) => String(i.row[idCol] ?? '') === discountAnchor.itemId) : null;
 
   if (items.length === 0) {
@@ -89,8 +92,8 @@ function OrderCart({
               <TableCell>Produto</TableCell>
               <TableCell align="right">Vlr Unit.</TableCell>
               <TableCell align="center">Qtd</TableCell>
-              <TableCell align="center" sx={{ width: 80 }}>ACR. %</TableCell>
-              <TableCell align="center" sx={{ width: 88 }}>SUBST. TRIB. %</TableCell>
+              <TableCell align="center" sx={{ width: 88 }}>ACR. %</TableCell>
+              <TableCell align="center" sx={{ width: 96 }}>SUBST. TRIB. %</TableCell>
               <TableCell align="center" sx={{ width: 72 }}>IPI</TableCell>
               <TableCell align="right">Total</TableCell>
               <TableCell align="center" sx={{ width: 72 }} />
@@ -174,12 +177,12 @@ function OrderCart({
                       size="small"
                       value={item.markupPct || ''}
                       placeholder="0"
-                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center' } }}
+                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center', padding: '4px 6px' } }}
                       onChange={(e) => {
                         const val = Number(e.target.value.replace(',', '.'));
                         onItemMarkupChange(id, Number.isFinite(val) ? Math.max(0, val) : 0);
                       }}
-                      sx={{ width: 72 }}
+                      sx={{ width: 80 }}
                     />
                   </TableCell>
                   <TableCell align="center">
@@ -187,9 +190,9 @@ function OrderCart({
                       type="number"
                       size="small"
                       value={item.stPct}
-                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center' } }}
+                      inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center', padding: '4px 6px' } }}
                       onChange={(e) => onItemStChange(id, Number(e.target.value))}
-                      sx={{ width: 72 }}
+                      sx={{ width: 88 }}
                     />
                   </TableCell>
                   <TableCell align="center">
@@ -219,7 +222,7 @@ function OrderCart({
                       }>
                         <IconButton
                           size="small"
-                          color={hasMarkup(item.markupPct) ? 'warning' : hasDiscount(item.discount) ? 'success' : 'default'}
+                          color={hasDiscount(item.discount) ? 'success' : 'default'}
                           onClick={(e) => setDiscountAnchor({ el: e.currentTarget, itemId: id })}
                         >
                           <DiscountIcon fontSize="small" />
@@ -286,15 +289,37 @@ function OrderCart({
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', height: '100%' }}>
-              <Typography variant="caption" color="text.secondary">Desconto geral</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: summary.orderDiscountTotal > 0 ? 'success.main' : 'text.primary', mb: 1 }}>
-                {formatBRL(summary.orderDiscountTotal)}
-              </Typography>
-              <DiscountInputControl
-                discount={orderDiscount}
-                onChange={onOrderDiscountChange}
-                amountLabel="Desc. no pedido"
-              />
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">Desconto geral</Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={showGeneralDiscount}
+                      onChange={(e) => {
+                        setShowGeneralDiscount(e.target.checked);
+                        if (!e.target.checked) onOrderDiscountChange(DEFAULT_DISCOUNT);
+                      }}
+                    />
+                  }
+                  label=""
+                  sx={{ m: 0 }}
+                />
+              </Stack>
+              {showGeneralDiscount ? (
+                <>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: summary.orderDiscountTotal > 0 ? 'success.main' : 'text.primary', mb: 1 }}>
+                    {formatBRL(summary.orderDiscountTotal)}
+                  </Typography>
+                  <DiscountInputControl
+                    discount={orderDiscount}
+                    onChange={onOrderDiscountChange}
+                    amountLabel="Desc. no pedido"
+                  />
+                </>
+              ) : (
+                <Typography variant="body2" color="text.disabled" sx={{ fontSize: 12, mt: 0.5 }}>Desativado</Typography>
+              )}
             </Box>
           </Grid>
         </Grid>

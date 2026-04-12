@@ -1,7 +1,7 @@
 import type { DiscountConfig, FieldMapping, OrderItem, SpreadsheetRow } from '../types';
 import { getNumber } from './productMapper';
 
-export const DEFAULT_DISCOUNT: DiscountConfig = { kind: 'value', amount: 0 };
+export const DEFAULT_DISCOUNT: DiscountConfig = { kind: 'percent', amount: 0 };
 
 export interface OrderSummary {
   grossTotal: number;
@@ -116,13 +116,8 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
   const ipiTotal = items.reduce((sum, item) => sum + item.ipiValue, 0);
   const stTotal = items.reduce((sum, item) => sum + item.stValue, 0);
 
-  // When a general order discount is applied, taxes must be proportionally
-  // reduced to reflect that they are calculated over the discounted total,
-  // not over the pre-discount subtotal.
-  const discountRatio = itemsSubtotal > 0 ? total / itemsSubtotal : 1;
-  const adjustedIpiTotal = ipiTotal * discountRatio;
-  const adjustedStTotal = stTotal * discountRatio;
-
+  // IPI and ST are fixed on the original item prices — the order discount is a
+  // commercial negotiation on the product subtotal only, not on the tax base.
   return {
     grossTotal,
     itemsSubtotal,
@@ -130,8 +125,8 @@ export function calculateOrderSummary(items: OrderItem[], orderDiscount?: Discou
     orderDiscountTotal,
     total,
     totalProdutos: total,
-    totalST: adjustedStTotal,
-    totalComImpostos: total + adjustedIpiTotal + adjustedStTotal,
+    totalST: stTotal,
+    totalComImpostos: total + ipiTotal + stTotal,
   };
 }
 

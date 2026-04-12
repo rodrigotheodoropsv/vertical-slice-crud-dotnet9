@@ -32,9 +32,10 @@ import { pdf } from '@react-pdf/renderer';
 import toast from 'react-hot-toast';
 
 import type { BrandingConfig, Order, SmtpConfig } from '../types';
-import { buildEmailBody, buildEmailHtml, buildEmailSubject } from '../utils/emailBuilder';
+import { buildEmailBody, buildEmailHtml, buildEmailSubject, stripHtml } from '../utils/emailBuilder';
 import OrderPDF from './OrderPDF';
 import OrcamentoPDF from './OrcamentoPDF';
+import RichTextEditor from './RichTextEditor';
 
 interface Props {
   order: Order;
@@ -44,7 +45,7 @@ interface Props {
   onClose: () => void;
 }
 
-type TabValue = 'preview' | 'html' | 'config';
+type TabValue = 'html' | 'config';
 type AttachmentType = 'none' | 'pedido' | 'orcamento';
 
 interface SendEmailRequest {
@@ -92,7 +93,7 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 export default function EmailModal({ order, branding, smtpConfig: initialConfig, onConfigChange, onClose }: Props) {
-  const [tab, setTab] = useState<TabValue>('preview');
+  const [tab, setTab] = useState<TabValue>('html');
   const [config, setConfig] = useState<SmtpConfig>(initialConfig);
   const [toEmail, setToEmail] = useState(initialConfig.salesEmail?.trim() || 'vendas1@lubefer.com.br');
   const [ccEmail, setCcEmail] = useState('');
@@ -101,12 +102,13 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
   const [copied, setCopied] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
   const [customMsgOpen, setCustomMsgOpen] = useState(false);
+  const [customSubject, setCustomSubject] = useState(() => buildEmailSubject(order));
 
-  const plainBody = buildEmailBody(order, config, customMessage);
-  const htmlBody = buildEmailHtml(order, branding, config, customMessage);
-  const subject = buildEmailSubject(order);
-  const resolvedTo = toEmail || config.salesEmail || order.cliente.email;
-  const resolvedCc = ccEmail.trim();
+  const hasCustomMessage = stripHtml(customMessage).trim().length > 0;
+  const plainBody = buildEmailBody(order, config, stripHtml(customMessage));
+  const htmlBody  = buildEmailHtml(order, branding, config, customMessage);
+  const resolvedTo  = toEmail || config.salesEmail || order.cliente.email;
+  const resolvedCc  = ccEmail.trim();
 
   async function generateAttachmentPdf(type: Exclude<AttachmentType, 'none'>): Promise<{ blob: Blob; filename: string } | null> {
     const logoUrl = await fetchLogoBase64(branding.logoPath);
@@ -117,10 +119,12 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
           : <OrcamentoPDF order={order} branding={branding} logoUrl={logoUrl} />;
 
       const blob = await pdf(element).toBlob();
+      const pdfId = order.cliente.razaoSocial.trim().split(/\s+/).slice(0, 2).join('.').replace(/[<>:"/\\|?*]+/g, '') || 'SemNome';
+      const cod = order.cliente.codCliente?.trim() || order.numero;
       const filename =
         type === 'pedido'
-          ? `Pedido-${order.numero}-${order.cliente.razaoSocial.replace(/\s+/g, '_')}.pdf`
-          : `Orcamento-${order.numero}-${order.cliente.razaoSocial.replace(/\s+/g, '_')}.pdf`;
+          ? `Pedido-${pdfId} - Cod.${cod}.pdf`
+          : `Orcamento-${pdfId} - Cod.${cod}.pdf`;
 
       return { blob, filename };
     } catch {
@@ -155,7 +159,7 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
       const payload: SendEmailRequest = {
         to: resolvedTo,
         cc: resolvedCc || undefined,
-        subject,
+        subject: customSubject,
         textBody: plainBody,
         htmlBody,
         fromName: config.fromName || order.vendedor,
@@ -188,7 +192,7 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(tab === 'html' ? htmlBody : plainBody).then(() => {
+    navigator.clipboard.writeText(htmlBody).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     });
@@ -214,7 +218,6 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
 
       <Box sx={{ px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)}>
-          <Tab value="preview" label="Texto" />
           <Tab value="html" label="HTML" />
           <Tab value="config" label="Configuracoes" />
         </Tabs>
@@ -280,12 +283,17 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
               )}
             </Stack>
 
-            <Alert severity="info" sx={{ mb: 1.5, borderRadius: 2 }}>
-              <Typography variant="body2"><strong>Assunto:</strong> {subject}</Typography>
-            </Alert>
+            <TextField
+              fullWidth
+              size="small"
+              label="Assunto"
+              value={customSubject}
+              onChange={(e) => setCustomSubject(e.target.value)}
+              sx={{ mb: 1.5 }}
+            />
 
             {/* Mensagem personalizada */}
-            <Box sx={{ mb: 2, border: '1px solid', borderColor: customMessage ? 'primary.light' : 'divider', borderRadius: 2, overflow: 'hidden' }}>
+            <Box sx={{ mb: 2, border: '1px solid', borderColor: hasCustomMessage ? 'primary.light' : 'divider', borderRadius: 2, overflow: 'hidden' }}>
               <Stack
                 direction="row"
                 alignItems="center"
@@ -294,11 +302,11 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
                 sx={{ px: 2, py: 1.2, cursor: 'pointer', userSelect: 'none', '&:hover': { bgcolor: 'action.hover' } }}
               >
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <EditIcon fontSize="small" color={customMessage ? 'primary' : 'action'} />
-                  <Typography variant="body2" sx={{ fontWeight: customMessage ? 600 : 400, color: customMessage ? 'primary.main' : 'text.secondary' }}>
+                  <EditIcon fontSize="small" color={hasCustomMessage ? 'primary' : 'action'} />
+                  <Typography variant="body2" sx={{ fontWeight: hasCustomMessage ? 600 : 400, color: hasCustomMessage ? 'primary.main' : 'text.secondary' }}>
                     Mensagem personalizada
                   </Typography>
-                  {customMessage ? (
+                  {hasCustomMessage ? (
                     <Chip size="small" label="Adicionada" color="primary" variant="filled" sx={{ height: 20, fontSize: 11 }} />
                   ) : (
                     <Typography variant="caption" color="text.disabled">(opcional)</Typography>
@@ -311,25 +319,16 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
               <Collapse in={customMsgOpen}>
                 <Box sx={{ px: 2, pb: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.25 }}>
-                    Escreva sua mensagem. Ela <strong>substitui completamente</strong> o texto padrao do template.
-                    Deixe em branco para usar o texto padrao.
+                    Escreva sua mensagem. Ela <strong>substitui completamente</strong> o texto padrão do template.
+                    Deixe em branco para usar o texto padrão.
                   </Typography>
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    maxRows={7}
-                    size="small"
-                    placeholder="Ex.: Conforme combinado em nossa conversa de hoje, segue o pedido referente ao item discutido."
+                  <RichTextEditor
                     value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    inputProps={{ maxLength: 800 }}
+                    onChange={setCustomMessage}
+                    placeholder="Ex.: Conforme combinado em nossa conversa de hoje, segue o pedido referente ao item discutido."
                   />
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 0.75 }}>
-                    <Typography variant="caption" color={customMessage.length > 750 ? 'error' : 'text.disabled'}>
-                      {customMessage.length}/800 caracteres
-                    </Typography>
-                    {customMessage && (
+                  <Stack direction="row" justifyContent="flex-end" alignItems="center" sx={{ mt: 0.75 }}>
+                    {hasCustomMessage && (
                       <Button size="small" color="error" variant="text" onClick={() => setCustomMessage('')} sx={{ minWidth: 0, fontSize: 12 }}>
                         Limpar
                       </Button>
@@ -339,20 +338,6 @@ export default function EmailModal({ order, branding, smtpConfig: initialConfig,
               </Collapse>
             </Box>
           </>
-        )}
-
-        {tab === 'preview' && (
-          <Box
-            component="pre"
-            sx={{
-              m: 0, p: 2, borderRadius: 2,
-              border: '1px solid', borderColor: 'divider',
-              bgcolor: 'grey.50', fontFamily: 'monospace',
-              fontSize: 12, lineHeight: 1.55, whiteSpace: 'pre-wrap',
-            }}
-          >
-            {plainBody}
-          </Box>
         )}
 
         {tab === 'html' && (

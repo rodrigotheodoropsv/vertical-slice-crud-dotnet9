@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react';
 import {
+  Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  InputAdornment,
   Paper,
   Stack,
   Table,
@@ -14,6 +16,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
   IconButton,
 } from '@mui/material';
@@ -21,6 +24,7 @@ import {
   Print as PrintIcon,
   Close as CloseIcon,
   PictureAsPdf as PictureAsPdfIcon,
+  InsertDriveFileOutlined as FileIcon,
 } from '@mui/icons-material';
 import { pdf } from '@react-pdf/renderer';
 import OrderPDF from './OrderPDF';
@@ -38,11 +42,20 @@ interface Props {
 export default function OrderNote({ order, branding, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfId, setPdfId] = useState(() =>
+    order.cliente.razaoSocial.trim().split(/\s+/).slice(0, 2).join(' ')
+  );
   const hasIpi = order.itens.some((i) => i.ipiPct > 0);
   const hasSt  = order.itens.some((i) => i.stPct  > 0);
   const hasImpostos = hasIpi || hasSt;
   const realIpiTotal = order.totalComImpostos - order.totalProdutos - order.totalST;
   const cs = 5 + (hasIpi ? 1 : 0) + (hasSt ? 1 : 0); // colSpan for label cells
+
+  function buildFilename() {
+    const safe = pdfId.trim().replace(/[<>:"/\\|?*]+/g, '').replace(/\s+/g, '.') || 'SemNome';
+    const cod = order.cliente.codCliente?.trim() || order.numero;
+    return `Pedido-${safe} - Cod.${cod}.pdf`;
+  }
 
   async function handleDownloadPDF() {
     setPdfLoading(true);
@@ -71,7 +84,7 @@ export default function OrderNote({ order, branding, onClose }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Pedido-${order.numero}.pdf`;
+      a.download = buildFilename();
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
@@ -249,18 +262,35 @@ export default function OrderNote({ order, branding, onClose }: Props) {
         </Typography>
       </DialogContent>
 
-      <DialogActions sx={{ px: 2.5, py: 1.5 }}>
-        <Button onClick={onClose} variant="outlined" color="inherit">Fechar</Button>
-        <Button onClick={handlePrint} variant="outlined" startIcon={<PrintIcon />}>Imprimir</Button>
-        <Button
-          onClick={handleDownloadPDF}
-          variant="contained"
-          color="error"
-          startIcon={<PictureAsPdfIcon />}
-          disabled={pdfLoading}
-        >
-          {pdfLoading ? 'Gerando PDF…' : 'Baixar PDF'}
-        </Button>
+      <DialogActions sx={{ px: 2.5, py: 1.5, flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 220, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TextField
+            size="small"
+            label="Nome do arquivo"
+            value={pdfId}
+            onChange={(e) => setPdfId(e.target.value)}
+            sx={{ flex: 1 }}
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><FileIcon fontSize="small" color="action" /></InputAdornment>,
+                endAdornment: <InputAdornment position="end"><Typography variant="caption" color="text.disabled" sx={{ whiteSpace: 'nowrap' }}>– Cod.{order.cliente.codCliente?.trim() || order.numero}.pdf</Typography></InputAdornment>,
+              },
+            }}
+          />
+        </Box>
+        <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+          <Button onClick={onClose} variant="outlined" color="inherit">Fechar</Button>
+          <Button onClick={handlePrint} variant="outlined" startIcon={<PrintIcon />}>Imprimir</Button>
+          <Button
+            onClick={handleDownloadPDF}
+            variant="contained"
+            color="error"
+            startIcon={<PictureAsPdfIcon />}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? 'Gerando PDF…' : 'Baixar PDF'}
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

@@ -264,7 +264,7 @@ export default function OrderPDF({ order, branding, logoUrl }: Props) {
             <Text style={[s.tHCellB, { width: 58 }]}>CÓD.</Text>
             <Text style={[s.tHCellB, { flex: 1 }]}>DESCRIÇÃO</Text>
             <Text style={[s.tHCellB, { width: 56, textAlign: 'right' }]}>PREÇO UN</Text>
-            <Text style={[s.tHCellB, { width: 48, textAlign: 'right' }]}>{'DESC.\n/UN'}</Text>
+            <Text style={[s.tHCellB, { width: 48, textAlign: 'right' }]}>{'DESC.\nUNID. %'}</Text>
             <Text style={[s.tHCellB, { width: 56, textAlign: 'right' }]}>TOTAL</Text>
             <Text style={[s.tHCellB, { width: 33, textAlign: 'center' }]}>IPI</Text>
             <Text style={[s.tHCellL, { width: 38, textAlign: 'center' }]}>{'SUBST.\nTRIBUT.'}</Text>
@@ -287,7 +287,12 @@ export default function OrderPDF({ order, branding, logoUrl }: Props) {
                 <Text style={[s.tCellB, { width: 58 }]}>{id}</Text>
                 <Text style={[s.tCellB, { flex: 1 }]}>{nome}</Text>
                 <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{item.markupPct > 0 ? formatBRLPrecise(item.effectiveUnitPrice) : formatBRL(item.effectiveUnitPrice)}</Text>
-                <Text style={[s.tCellB, { width: 48, textAlign: 'right' }]}>{item.discountTotal > 0 ? formatBRL(item.discountTotal / item.quantidade) : '—'}</Text>
+                <Text style={[s.tCellB, { width: 48, textAlign: 'right' }]}>{(() => {
+                  if (item.discountTotal <= 0) return '—';
+                  if (item.discount.kind === 'percent') return `${item.discount.amount.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
+                  const pct = item.effectiveUnitPrice > 0 ? (item.discountTotal / item.quantidade / item.effectiveUnitPrice) * 100 : 0;
+                  return `${pct.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
+                })()}</Text>
                 <Text style={[s.tCellB, { width: 56, textAlign: 'right' }]}>{formatBRL(item.subtotal)}</Text>
                 <Text style={[s.tCellB, { width: 33, textAlign: 'center' }]}>{item.ipiPct > 0 ? ipiFormat(item.ipiPct) : '—'}</Text>
                 <Text style={[s.tCellL, { width: 38, textAlign: 'center' }]}>{item.stPct > 0 ? ipiFormat(item.stPct) : '—'}</Text>

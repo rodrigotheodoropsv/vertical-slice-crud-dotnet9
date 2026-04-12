@@ -14,8 +14,10 @@ import {
   MailOutline as MailIcon,
   History as HistoryIcon,
   DeleteOutline as DeleteIcon,
+  AddShoppingCart as AddCustomIcon,
 } from '@mui/icons-material';
 
+import AddCustomItemDialog from './components/AddCustomItemDialog';
 import FileUploader from './components/FileUploader';
 import ProductCatalog from './components/ProductCatalog';
 import OrderCart from './components/OrderCart';
@@ -208,6 +210,17 @@ export default function App() {
     setCartItems([]);
   }, []);
 
+  const [customItemOpen, setCustomItemOpen] = useState(false);
+
+  const handleAddCustomItem = useCallback((row: SpreadsheetRow, quantity: number) => {
+    if (!catalog) return;
+    setCartItems((prev) => {
+      const newItem = buildOrderItem(row, quantity, catalog.fieldMapping, DEFAULT_DISCOUNT);
+      toast.success(`"${String(row[catalog.fieldMapping.nomeCol] ?? '')}" adicionado ao pedido`);
+      return [...prev, newItem];
+    });
+  }, [catalog]);
+
   const handleAddItem = useCallback((row: SpreadsheetRow, quantity: number) => {
     if (!catalog) return;
     const { idCol, nomeCol, precoCol, estoqueCol } = catalog.fieldMapping;
@@ -259,14 +272,14 @@ export default function App() {
   }, [catalog]);
 
   const handleChangeQty = useCallback((rowId: string, qty: number) => {
-    if (!catalog || qty <= 0) return;
+    if (!catalog || !Number.isFinite(qty)) return;
     const { idCol, estoqueCol, precoCol } = catalog.fieldMapping;
     setCartItems((prev) =>
       prev.map((i) => {
         if (String(i.row[idCol] ?? '') !== rowId) return i;
         const stock = Number(i.row[estoqueCol] ?? 0);
         const price = Number(i.row[precoCol] ?? 0);
-        const safeQty = Math.min(qty, stock);
+        const safeQty = Math.max(1, stock > 0 ? Math.min(qty, stock) : qty);
         const pricing = calculateOrderItemPricing(price, safeQty, i.discount, i.markupPct);
         const newIpiValue = (pricing.subtotal * i.ipiPct) / 100;
         const newStValue = ((pricing.subtotal + newIpiValue) * i.stPct) / 100;
@@ -503,6 +516,18 @@ export default function App() {
               <Stack direction="row" alignItems="center" spacing={1.5} mb={2.5}>
                 <StepBadge n={3} />
                 <Typography variant="subtitle1" sx={{ flex: 1 }}>Itens do Pedido</Typography>
+                <Tooltip title="Adicionar um item que não está no catálogo">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<AddCustomIcon />}
+                    onClick={() => setCustomItemOpen(true)}
+                    sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    Item personalizado
+                  </Button>
+                </Tooltip>
                 {hasItems && (
                   <Stack alignItems="flex-end" spacing={0.25}>
                     {pricingSummary.itemDiscountTotal + pricingSummary.orderDiscountTotal > 0 && (
@@ -639,6 +664,14 @@ export default function App() {
         <EmailHistoryModal
           open={showEmailHistory}
           onClose={() => setShowEmailHistory(false)}
+        />
+      )}
+      {customItemOpen && catalog && (
+        <AddCustomItemDialog
+          open={customItemOpen}
+          fieldMapping={catalog.fieldMapping}
+          onAdd={handleAddCustomItem}
+          onClose={() => setCustomItemOpen(false)}
         />
       )}
     </Box>
