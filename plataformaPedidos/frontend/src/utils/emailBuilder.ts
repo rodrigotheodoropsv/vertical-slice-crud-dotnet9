@@ -65,7 +65,7 @@ export function buildEmailHtml(order: Order, branding: BrandingConfig, smtp?: Sm
 
     <p style="margin:0 0 24px;font-size:15px"><strong>Prezado(a),</strong></p>
 
-    ${customMessage?.trim()
+    ${customMessage && stripHtml(customMessage).trim()
       ? `<div style="margin:0 0 32px;font-size:15px;line-height:1.7">${customMessage.trim()}</div>`
       : `<p style="margin:0 0 24px;font-size:15px">
       Segue anexo arquivo contendo pedido do cliente mencionado acima.
